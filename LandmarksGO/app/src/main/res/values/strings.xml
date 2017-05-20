@@ -62,5 +62,10 @@
     <string name="navigation_drawer_close">Close navigation drawer</string>
 
     <string name="action_settings">Settings</string>
+    <string name="title_activity_friends">Friends</string>
+    <string name="title_activity_highscore">High Score</string>
+    <string name="title_activity_addlandmark">Add Landmark</string>
+    <string name="title_activity_settings">Settings</string>
+    <string name="title_activity_friendsaddnew">Add New Friend</string>
 
 </resources>
