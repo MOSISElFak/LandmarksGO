@@ -40,5 +40,11 @@
     <string name="showfriends">Show friends on the map</string>
     <string name="gps_refresh">GPS refresh time</string>
     <string name="about">About</string>
+    <string name="title_activity_main">LandmarksGO</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
 
 </resources>
