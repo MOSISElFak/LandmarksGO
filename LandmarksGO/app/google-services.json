@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "1063984472775",
+    "firebase_url": "https://landmarkgo-d1a7c.firebaseio.com",
+    "project_id": "landmarkgo-d1a7c",
+    "storage_bucket": "landmarkgo-d1a7c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1063984472775:android:8478911eb7f4324b",
+        "android_client_info": {
+          "package_name": "com.example.mosis.landmarksgo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1063984472775-oi1q2dsi9gbjbppfgn5gqlbjgcpjl1h6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.mosis.landmarksgo",
+            "certificate_hash": "18eaa56754258496cf92b834248f5f4b948ee785"
+          }
+        },
+        {
+          "client_id": "1063984472775-odstgqnhksu63mdtkpcn9fotqkq450dn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxm_kLB_YJTpBSAIqMBsnKSB5X2JQRAN4"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1063984472775-odstgqnhksu63mdtkpcn9fotqkq450dn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
