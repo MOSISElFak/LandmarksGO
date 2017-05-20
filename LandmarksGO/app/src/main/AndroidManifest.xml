@@ -16,9 +16,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".SignupActivity" />
-        <activity android:name=".LoginActivity" />
-        <activity android:name=".ResetPasswordActivity" />
+        <activity android:name=".authentication.SignupActivity" />
+        <activity android:name=".authentication.LoginActivity" />
+        <activity android:name=".authentication.ResetPasswordActivity" />
         <activity android:name=".SettingsActivity"></activity>
     </application>
 

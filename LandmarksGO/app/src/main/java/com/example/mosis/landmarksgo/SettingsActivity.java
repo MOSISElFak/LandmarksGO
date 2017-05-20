@@ -1,5 +1,7 @@
 package com.example.mosis.landmarksgo;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -10,6 +12,8 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.example.mosis.landmarksgo.authentication.LoginActivity;
+import com.example.mosis.landmarksgo.authentication.SignupActivity;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
@@ -17,7 +21,7 @@ import com.google.firebase.auth.FirebaseUser;
 
 public class SettingsActivity extends AppCompatActivity {
 
-    private Button btnChangeEmail, btnChangePassword, btnRemoveUser,
+    private Button btnChangeEmail, btnChangePassword, btnRemoveUser, btnAbout,
             changeEmail, changePassword, remove, signOut;
 
     private EditText oldEmail, newEmail, password, newPassword;
@@ -53,6 +57,7 @@ public class SettingsActivity extends AppCompatActivity {
         btnChangeEmail = (Button) findViewById(R.id.change_email_button);
         btnChangePassword = (Button) findViewById(R.id.change_password_button);
         btnRemoveUser = (Button) findViewById(R.id.remove_user_button);
+        btnAbout = (Button) findViewById(R.id.about);
         changeEmail = (Button) findViewById(R.id.changeEmail);
         changePassword = (Button) findViewById(R.id.changePass);
         remove = (Button) findViewById(R.id.remove);
@@ -188,6 +193,22 @@ public class SettingsActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 signOut();
+            }
+        });
+
+        btnAbout.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(SettingsActivity.this);
+                builder.setMessage("App made by Koma & Ugre\nmail@outlook.com \nmail@gmail.com")
+                        .setCancelable(false)
+                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int id) {
+                                dialog.cancel();
+                            }
+                        });
+                AlertDialog alert = builder.create();
+                alert.show();
             }
         });
     }

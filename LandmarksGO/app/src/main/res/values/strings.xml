@@ -28,11 +28,17 @@
     <string name="hint_new_email">New Email</string>
     <string name="new_pass">New Password</string>
     <string name="change_email">Change Email</string>
+    <string name="change_photo">Change Photo</string>
     <string name="change_password">Change Password</string>
     <string name="remove_user">Delete account</string>
     <string name="btn_change">Change</string>
     <string name="btn_send">Send</string>
     <string name="btn_remove">Remove</string>
     <string name="btn_sign_out">Sign Out</string>
+    <string name="workinback">Work in background</string>
+    <string name="showplayers">Show other players on the map</string>
+    <string name="showfriends">Show friends on the map</string>
+    <string name="gps_refresh">GPS refresh time</string>
+    <string name="about">About</string>
 
 </resources>

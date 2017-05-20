@@ -5,15 +5,32 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:padding="10dp"
     tools:context="com.example.mosis.landmarksgo.SettingsActivity">
 
+    <CheckBox
+        android:id="@+id/checkBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/workinback" />
 
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="30dp"
-        android:layout_height="30dp"
-        android:visibility="gone" />
+    <CheckBox
+        android:id="@+id/checkBox2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/showplayers" />
 
+    <CheckBox
+        android:id="@+id/checkBox3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/showfriends" />
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/gps_refresh" />
 
     <Button
         android:id="@+id/change_email_button"
@@ -92,6 +109,15 @@
         android:textStyle="bold" />
 
     <Button
+        android:id="@+id/changePhoto"
+        style="?android:textAppearanceSmall"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/change_photo"
+        android:textStyle="bold"/>
+
+    <Button
         android:id="@+id/remove_user_button"
         style="?android:textAppearanceSmall"
         android:layout_width="match_parent"
@@ -120,5 +146,22 @@
         android:text="@string/btn_sign_out"
         android:textColor="@android:color/white"
         android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/about"
+        style="?android:textAppearanceSmall"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@color/colorPrimaryDark"
+        android:text="@string/about"
+        android:textColor="@android:color/white"
+        android:textStyle="bold"/>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:visibility="gone" />
 
 </LinearLayout>
