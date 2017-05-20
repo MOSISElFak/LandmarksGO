@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.mosis.landmarksgo">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/icon"
@@ -12,11 +14,11 @@
         <activity android:name=".authentication.SignupActivity" />
         <activity android:name=".authentication.LoginActivity" />
         <activity android:name=".authentication.ResetPasswordActivity" />
-        <activity android:name=".SettingsActivity" />
-        <activity android:name=".AddLandmark" />
-        <activity android:name=".HighScore" />
-        <activity android:name=".Friends" />
-        <activity android:name=".FriendsAddNew" />
+        <activity android:name=".SettingsActivity" android:label="@string/title_activity_settings"/>
+        <activity android:name=".AddLandmark" android:label="@string/title_activity_addlandmark"/>
+        <activity android:name=".HighScore" android:label="@string/title_activity_highscore"/>
+        <activity android:name=".Friends" android:label="@string/title_activity_friends"/>
+        <activity android:name=".FriendsAddNew" android:label="@string/title_activity_friendsaddnew"/>
         <activity
             android:name=".MainActivity"
             android:label="@string/title_activity_main"
