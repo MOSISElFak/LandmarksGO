@@ -14,6 +14,8 @@
     <string name="auth_failed">Authentication failed, check your email and password or sign up</string>
 
     <!-- SIGNUP Activity -->
+    <string name="firstname">First Name</string>
+    <string name="lastname">Last Name</string>
     <string name="email">Email</string>
     <string name="action_sign_in_short">Register</string>
     <string name="btn_forgot_password">Forgot your password?</string>
@@ -27,6 +29,7 @@
     <!-- SETTINGS Activity -->
     <string name="hint_new_email">New Email</string>
     <string name="new_pass">New Password</string>
+    <string name="save">Save</string>
     <string name="change_email">Change Email</string>
     <string name="change_photo">Change Photo</string>
     <string name="change_password">Change Password</string>
@@ -41,6 +44,11 @@
     <string name="gps_refresh">GPS refresh time</string>
     <string name="about">About</string>
     <string name="title_activity_main">LandmarksGO</string>
+    <string-array name="gps_refresh_array">
+        <item>1</item>
+        <item>5</item>
+        <item>10</item>
+    </string-array>
 
     <!-- ADDLANDMARK Activity -->
     <string-array name="add_landmark_array">

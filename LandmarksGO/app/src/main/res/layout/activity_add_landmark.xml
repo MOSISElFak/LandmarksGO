@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.example.mosis.landmarksgo.AddLandmark">
+    tools:context="com.example.mosis.landmarksgo.landmark.AddLandmark">
 
     <LinearLayout
         android:layout_alignParentStart="true"

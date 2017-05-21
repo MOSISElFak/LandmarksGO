@@ -17,13 +17,18 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class SignupActivity extends AppCompatActivity {
 
-    private EditText inputEmail, inputPassword;
+    private EditText inputEmail, inputPassword, inputFirstName, inputLastName;
     private Button btnSignIn, btnSignUp, btnResetPassword;
     private ProgressBar progressBar;
+
     private FirebaseAuth auth;
+    private FirebaseDatabase database;
+    private DatabaseReference users;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,9 +37,13 @@ public class SignupActivity extends AppCompatActivity {
 
         //Get Firebase auth instance
         auth = FirebaseAuth.getInstance();
+        database = FirebaseDatabase.getInstance();
+        users = database.getReference("users");
 
         btnSignIn = (Button) findViewById(R.id.sign_in_button);
         btnSignUp = (Button) findViewById(R.id.sign_up_button);
+        inputFirstName = (EditText) findViewById(R.id.firstname);
+        inputLastName = (EditText) findViewById(R.id.lastname);
         inputEmail = (EditText) findViewById(R.id.email);
         inputPassword = (EditText) findViewById(R.id.password);
         progressBar = (ProgressBar) findViewById(R.id.progressBar);
@@ -91,6 +100,11 @@ public class SignupActivity extends AppCompatActivity {
                                     Toast.makeText(SignupActivity.this, "Authentication failed." + task.getException(),
                                             Toast.LENGTH_SHORT).show();
                                 } else {
+                                    String userid = task.getResult().getUser().getUid();
+                                    String first = inputFirstName.getText().toString();
+                                    String last = inputLastName.getText().toString();
+
+                                    addUserInDatabase(userid, first, last);
                                     startActivity(new Intent(SignupActivity.this, MainActivity.class));
                                     finish();
                                 }
@@ -105,5 +119,12 @@ public class SignupActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         progressBar.setVisibility(View.GONE);
+    }
+
+    private void addUserInDatabase(String userid,String first, String last)
+    {
+        User newUser = new User(first, last);
+        users.child(userid).setValue(newUser);
+        database.getReference("scoreTable").child(userid).setValue("0");
     }
 }

@@ -1,4 +1,4 @@
-package com.example.mosis.landmarksgo;
+package com.example.mosis.landmarksgo.landmark;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -8,7 +8,9 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.Toast;
 
+import com.example.mosis.landmarksgo.R;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -51,6 +53,13 @@ public class AddLandmark extends AppCompatActivity implements AdapterView.OnItem
         editLat = (EditText) findViewById(R.id.landmark_lat);
         editLon = (EditText) findViewById(R.id.landmark_lon);
 
+        btnPickFromMap.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                //TODO da mu otvori mapu gde ce da izabere kordinate
+            }
+        });
+
         btnCancel.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
@@ -63,10 +72,15 @@ public class AddLandmark extends AppCompatActivity implements AdapterView.OnItem
             public void onClick(View v) {
                 String name = editName.getText().toString();
                 String desc = editDesc.getText().toString();
-                String lon = editLon.getText().toString();
-                String lat = editLat.getText().toString();
+                Double lon = Double.parseDouble(editLon.getText().toString());
+                Double lat = Double.parseDouble(editLat.getText().toString());
+
+                Landmark landmark = new Landmark(name, desc, type, lon, lat);
 
                 // dodaj landmark u bazu
+                root.push().setValue(landmark);
+                Toast.makeText(AddLandmark.this, "New landmark added!", Toast.LENGTH_SHORT).show();
+                finish();
             }
         });
     }

@@ -7,9 +7,13 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.example.mosis.landmarksgo.authentication.LoginActivity;
@@ -18,17 +22,23 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
-public class SettingsActivity extends AppCompatActivity {
+public class SettingsActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener{
 
-    private Button btnChangeEmail, btnChangePassword, btnRemoveUser, btnAbout,
+    private Button btnChangeEmail, btnChangePassword, btnRemoveUser, btnAbout, btnSave,
             changeEmail, changePassword, remove, signOut;
-
+    private CheckBox work_check, players_check, friends_check;
     private EditText oldEmail, newEmail, password, newPassword;
     private ProgressBar progressBar;
+    private Spinner gpsSpinner;
+    
+    private String gpsRefresh;
 
     private FirebaseAuth.AuthStateListener authListener;
     private FirebaseAuth auth;
+    private FirebaseDatabase database;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +50,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         //get current user
         final FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        database = FirebaseDatabase.getInstance();
 
         authListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -54,6 +65,7 @@ public class SettingsActivity extends AppCompatActivity {
             }
         };
 
+        btnSave = (Button) findViewById(R.id.save_button);
         btnChangeEmail = (Button) findViewById(R.id.change_email_button);
         btnChangePassword = (Button) findViewById(R.id.change_password_button);
         btnRemoveUser = (Button) findViewById(R.id.remove_user_button);
@@ -68,6 +80,17 @@ public class SettingsActivity extends AppCompatActivity {
         password = (EditText) findViewById(R.id.password);
         newPassword = (EditText) findViewById(R.id.newPassword);
 
+        work_check = (CheckBox) findViewById(R.id.workback);
+        players_check = (CheckBox) findViewById(R.id.showplayers);
+        friends_check = (CheckBox) findViewById(R.id.showfriends);
+
+        gpsSpinner = (Spinner) findViewById(R.id.gps_spinner);
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.gps_refresh_array, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        gpsSpinner.setAdapter(adapter);
+        gpsSpinner.setOnItemSelectedListener(this);
+
         oldEmail.setVisibility(View.GONE);
         newEmail.setVisibility(View.GONE);
         password.setVisibility(View.GONE);
@@ -81,6 +104,28 @@ public class SettingsActivity extends AppCompatActivity {
         if (progressBar != null) {
             progressBar.setVisibility(View.GONE);
         }
+
+        btnSave.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                String work_status = "false";
+                String players_status = "false";
+                String friends_status = "false";
+
+                if(work_check.isChecked())
+                    work_status = "true";
+                if (players_check.isChecked())
+                    players_status = "true";
+                if (friends_check.isChecked())
+                    friends_status = "true";
+
+                database.getReference("users").child(user.getUid()).child("workback").setValue(work_status);
+                database.getReference("users").child(user.getUid()).child("showplayers").setValue(players_status);
+                database.getReference("users").child(user.getUid()).child("showfriends").setValue(friends_status);
+                database.getReference("users").child(user.getUid()).child("gpsrefresh").setValue(gpsRefresh);
+                Toast.makeText(SettingsActivity.this, "Settings saved", Toast.LENGTH_SHORT).show();
+            }
+        });
 
         btnChangeEmail.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -170,6 +215,7 @@ public class SettingsActivity extends AppCompatActivity {
             public void onClick(View v) {
                 progressBar.setVisibility(View.VISIBLE);
                 if (user != null) {
+                    onAccDelete(user.getUid());
                     user.delete()
                             .addOnCompleteListener(new OnCompleteListener<Void>() {
                                 @Override
@@ -236,5 +282,23 @@ public class SettingsActivity extends AppCompatActivity {
         if (authListener != null) {
             auth.removeAuthStateListener(authListener);
         }
+    }
+
+    private void onAccDelete(String userid)
+    {
+        // Ovde se brisu svi njegovi podaci iz baze
+        database.getReference("scoreTable").child(userid).removeValue();
+        database.getReference("users").child(userid).removeValue();
+        // TODO izbrisi ga i iz prijateljskih veza kasnije
+    }
+
+    @Override
+    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+        this.gpsRefresh = parent.getItemAtPosition(position).toString();
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> parent) {
+
     }
 }
