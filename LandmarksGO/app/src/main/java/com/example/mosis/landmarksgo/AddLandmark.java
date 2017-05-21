@@ -1,7 +1,7 @@
 package com.example.mosis.landmarksgo;
 
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -66,7 +66,7 @@ public class AddLandmark extends AppCompatActivity implements AdapterView.OnItem
                 String lon = editLon.getText().toString();
                 String lat = editLat.getText().toString();
 
-                // dodaj landmark u bazu
+                // TODO: dodaj landmark u bazu
             }
         });
     }
