@@ -75,5 +75,13 @@
     <string name="title_activity_addlandmark">Add Landmark</string>
     <string name="title_activity_settings">Settings</string>
     <string name="title_activity_friendsaddnew">Add New Friend</string>
+    <string name="title_activity_maps">Map</string>
+
+    <!-- SEARCH DROPDOWN IN MAP -->
+    <string-array name="search_type">
+        <item>Name</item>
+        <item>Distance</item>
+        <item>Category</item>
+    </string-array>
 
 </resources>
