@@ -18,12 +18,16 @@ import android.widget.Toast;
 
 import com.example.mosis.landmarksgo.authentication.LoginActivity;
 import com.example.mosis.landmarksgo.authentication.SignupActivity;
+import com.example.mosis.landmarksgo.authentication.User;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class SettingsActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener{
 
@@ -34,7 +38,8 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
     private ProgressBar progressBar;
     private Spinner gpsSpinner;
     
-    private String gpsRefresh;
+    private Integer gpsRefresh;
+    private Boolean friends_status, players_status, workback_status;
 
     private FirebaseAuth.AuthStateListener authListener;
     private FirebaseAuth auth;
@@ -85,7 +90,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         friends_check = (CheckBox) findViewById(R.id.showfriends);
 
         gpsSpinner = (Spinner) findViewById(R.id.gps_spinner);
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+        final ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
                 R.array.gps_refresh_array, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         gpsSpinner.setAdapter(adapter);
@@ -105,23 +110,35 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
             progressBar.setVisibility(View.GONE);
         }
 
+        // OVDE CITAM SETTINGS IZ BAZE
+        database.getReference("users").child(user.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                User u = dataSnapshot.getValue(User.class);
+                friends_status = u.showfriends;
+                players_status = u.showplayers;
+                workback_status = u.workback;
+                gpsRefresh = u.gpsrefresh;
+
+                friends_check.setChecked(friends_status);
+                players_check.setChecked(players_status);
+                work_check.setChecked(workback_status);
+                int pos = adapter.getPosition(gpsRefresh.toString());
+                gpsSpinner.setSelection(pos);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
         btnSave.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                String work_status = "false";
-                String players_status = "false";
-                String friends_status = "false";
-
-                if(work_check.isChecked())
-                    work_status = "true";
-                if (players_check.isChecked())
-                    players_status = "true";
-                if (friends_check.isChecked())
-                    friends_status = "true";
-
-                database.getReference("users").child(user.getUid()).child("workback").setValue(work_status);
-                database.getReference("users").child(user.getUid()).child("showplayers").setValue(players_status);
-                database.getReference("users").child(user.getUid()).child("showfriends").setValue(friends_status);
+                database.getReference("users").child(user.getUid()).child("workback").setValue(work_check.isChecked());
+                database.getReference("users").child(user.getUid()).child("showplayers").setValue(players_check.isChecked());
+                database.getReference("users").child(user.getUid()).child("showfriends").setValue(friends_check.isChecked());
                 database.getReference("users").child(user.getUid()).child("gpsrefresh").setValue(gpsRefresh);
                 Toast.makeText(SettingsActivity.this, "Settings saved", Toast.LENGTH_SHORT).show();
             }
@@ -294,7 +311,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
 
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-        this.gpsRefresh = parent.getItemAtPosition(position).toString();
+        this.gpsRefresh = Integer.parseInt(parent.getItemAtPosition(position).toString());
     }
 
     @Override

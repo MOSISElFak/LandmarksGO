@@ -17,6 +17,8 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -66,10 +68,19 @@ public class SignupActivity extends AppCompatActivity {
         btnSignUp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                final String firstname = inputFirstName.getText().toString();
+                final String lastname = inputLastName.getText().toString();
                 String email = inputEmail.getText().toString().trim();
                 String password = inputPassword.getText().toString().trim();
 
+                if (TextUtils.isEmpty(firstname)) {
+                    Toast.makeText(getApplicationContext(), "Enter your first name!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (TextUtils.isEmpty(lastname)) {
+                    Toast.makeText(getApplicationContext(), "Enter your last name!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 if (TextUtils.isEmpty(email)) {
                     Toast.makeText(getApplicationContext(), "Enter email address!", Toast.LENGTH_SHORT).show();
                     return;
@@ -101,10 +112,8 @@ public class SignupActivity extends AppCompatActivity {
                                             Toast.LENGTH_SHORT).show();
                                 } else {
                                     String userid = task.getResult().getUser().getUid();
-                                    String first = inputFirstName.getText().toString();
-                                    String last = inputLastName.getText().toString();
 
-                                    addUserInDatabase(userid, first, last);
+                                    addUserInDatabase(userid, firstname, lastname);
                                     startActivity(new Intent(SignupActivity.this, MainActivity.class));
                                     finish();
                                 }
@@ -126,5 +135,13 @@ public class SignupActivity extends AppCompatActivity {
         User newUser = new User(first, last);
         users.child(userid).setValue(newUser);
         database.getReference("scoreTable").child(userid).setValue("0");
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+        UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+        .setDisplayName(first + " " + last)
+        .build();
+
+        user.updateProfile(profileUpdates);
     }
 }
