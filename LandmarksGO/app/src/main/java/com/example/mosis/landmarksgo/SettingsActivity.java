@@ -3,6 +3,8 @@ package com.example.mosis.landmarksgo;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.net.Uri;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -12,6 +14,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.Toast;
@@ -23,16 +26,19 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 public class SettingsActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener{
 
-    private Button btnChangeEmail, btnChangePassword, btnRemoveUser, btnAbout, btnSave,
-            changeEmail, changePassword, remove, signOut;
+    private Button btnChangeEmail, btnChangePassword, btnRemoveUser, btnAbout, btnSave, btnChangePhoto,
+            changeEmail, changePassword, camera, gallery, remove, signOut;
     private CheckBox work_check, players_check, friends_check;
     private EditText oldEmail, newEmail, password, newPassword;
     private ProgressBar progressBar;
@@ -43,7 +49,9 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
 
     private FirebaseAuth.AuthStateListener authListener;
     private FirebaseAuth auth;
+    private FirebaseUser user;
     private FirebaseDatabase database;
+    private StorageReference storage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,8 +62,13 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         auth = FirebaseAuth.getInstance();
 
         //get current user
-        final FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        user = FirebaseAuth.getInstance().getCurrentUser();
+
+        //get database instance
         database = FirebaseDatabase.getInstance();
+
+        //get storage reference
+        storage = FirebaseStorage.getInstance().getReference();
 
         authListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -74,9 +87,12 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         btnChangeEmail = (Button) findViewById(R.id.change_email_button);
         btnChangePassword = (Button) findViewById(R.id.change_password_button);
         btnRemoveUser = (Button) findViewById(R.id.remove_user_button);
+        btnChangePhoto = (Button) findViewById(R.id.changePhoto);
         btnAbout = (Button) findViewById(R.id.about);
         changeEmail = (Button) findViewById(R.id.changeEmail);
         changePassword = (Button) findViewById(R.id.changePass);
+        camera = (Button) findViewById(R.id.camera);
+        gallery = (Button) findViewById(R.id.gallery);
         remove = (Button) findViewById(R.id.remove);
         signOut = (Button) findViewById(R.id.sign_out);
 
@@ -129,7 +145,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(SettingsActivity.this, databaseError.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -227,6 +243,29 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
             }
         });
 
+        btnChangePhoto.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                LinearLayout layout = (LinearLayout) findViewById(R.id.upload_photo_layout);
+                layout.setVisibility(View.VISIBLE);
+            }
+        });
+        camera.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                Intent takePicture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                startActivityForResult(takePicture, 0);
+            }
+        });
+        gallery.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                Intent pickPhoto = new Intent(Intent.ACTION_PICK,
+                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                startActivityForResult(pickPhoto , 1);
+            }
+        });
+
         btnRemoveUser.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -317,5 +356,26 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
     @Override
     public void onNothingSelected(AdapterView<?> parent) {
 
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == 0 || requestCode == 1)
+        {
+            if (resultCode == RESULT_OK) {
+                Uri selectedImage = data.getData();
+                UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder().setPhotoUri(selectedImage).build();
+                user.updateProfile(profileUpdates).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        Toast.makeText(SettingsActivity.this, "Profile picture updated!", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+            else
+                Toast.makeText(this, "Action canceled!", Toast.LENGTH_SHORT).show();
+        }
     }
 }

@@ -134,7 +134,8 @@ public class SignupActivity extends AppCompatActivity {
     {
         User newUser = new User(first, last);
         users.child(userid).setValue(newUser);
-        database.getReference("scoreTable").child(userid).setValue("0");
+        database.getReference("scoreTable").child(userid).child("name").setValue(first + " " + last);
+        database.getReference("scoreTable").child(userid).child("points").setValue(0);
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
