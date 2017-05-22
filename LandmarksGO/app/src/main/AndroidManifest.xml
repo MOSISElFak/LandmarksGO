@@ -2,7 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.mosis.landmarksgo">
 
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!--
          The ACCESS_COARSE/FINE_LOCATION permissions are not required to use
@@ -26,6 +29,11 @@
         <activity android:name=".HighScore" android:label="@string/title_activity_highscore"/>
         <activity android:name=".Friends" android:label="@string/title_activity_friends"/>
         <activity android:name=".FriendsAddNew" android:label="@string/title_activity_friendsaddnew"/>
+        <activity
+            android:name=".bluetooth.DeviceListActivity"
+            android:label="@string/select_device"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.DeviceDefault.Light.Dialog" />
 
         <activity
             android:name=".MainActivity"
