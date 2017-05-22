@@ -168,6 +168,42 @@
                 android:text="@string/change_photo"
                 android:textStyle="bold"/>
 
+            <LinearLayout
+                android:id="@+id/upload_photo_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/textView4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Take photo from: " />
+
+                <Button
+                    android:id="@+id/camera"
+                    style="?android:textAppearanceSmall"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="10dp"
+                    android:background="@color/colorPrimaryDark"
+                    android:text="@string/camera_upload"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/gallery"
+                    style="?android:textAppearanceSmall"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="10dp"
+                    android:background="@color/colorPrimaryDark"
+                    android:text="@string/gallery_upload"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
             <Button
                 android:id="@+id/remove_user_button"
                 style="?android:textAppearanceSmall"

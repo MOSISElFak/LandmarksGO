@@ -31,7 +31,9 @@
     <string name="new_pass">New Password</string>
     <string name="save">Save</string>
     <string name="change_email">Change Email</string>
-    <string name="change_photo">Change Photo</string>
+    <string name="change_photo">Change Profile Picture</string>
+    <string name="camera_upload">Camera</string>
+    <string name="gallery_upload">Gallery</string>
     <string name="change_password">Change Password</string>
     <string name="remove_user">Delete account</string>
     <string name="btn_change">Change</string>
