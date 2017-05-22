@@ -1,9 +1,11 @@
-package com.example.mosis.landmarksgo;
+package com.example.mosis.landmarksgo.friends;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,13 +28,15 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.mosis.landmarksgo.R;
 import com.example.mosis.landmarksgo.bluetooth.ChatService;
 import com.example.mosis.landmarksgo.bluetooth.DeviceListActivity;
-
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class Friends extends AppCompatActivity {
+    public static final String FRIEND_REQUEST_CODE = "MONUMENTS_GO_FRIEND_REQUEST_";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +48,7 @@ public class Friends extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Activating Bluetooth...", Snackbar.LENGTH_LONG).setAction("Action", null).show();
+                Snackbar.make(view, "Waiting for incoming friend request or send one.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
                 //Intent intent = new Intent(Friends.this, FriendsAddNew.class);
                 //startActivity(intent);
 
@@ -59,33 +63,8 @@ public class Friends extends AppCompatActivity {
 
             @Override
             public void run() {
-                bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-                //>this was in onStart
-                if (!bluetoothAdapter.isEnabled()) {
-                    Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                    startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-                } else {
-                    if (chatService == null)
-                        setupChat();
-                }
-                //<
-
-                //getWidgetReferences();
-                //bindEventHandler();
-
-                if (bluetoothAdapter == null) {
-                    Toast.makeText(Friends.this, "Bluetooth is not available", Toast.LENGTH_LONG).show();
-                    finish();
-                    return;
-                }
-
-                ensureDiscoverable();
-
                 Intent serverIntent = new Intent(Friends.this, DeviceListActivity.class);
                 startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
-
-                //TODO: When two devices are connected, send friend request. Show alert to confirm it.
             }
         };
         Thread btThread = new Thread(r);
@@ -126,14 +105,15 @@ public class Friends extends AppCompatActivity {
                 case MESSAGE_STATE_CHANGE:
                     switch (msg.arg1) {
                         case ChatService.STATE_CONNECTED:
-                            Log.d(TAG, "MainActivity: handleMessage MESSAGE_STATE_CHANGE STATE_CONNECTED");
-                            setStatus(getString(R.string.title_connected_to,
-                                    connectedDeviceName));
+                            Log.d(TAG, "MainActivity: handleMessage MESSAGE_STATE_CHANGE STATE_CONNECTED");     //for new devices
+                            setStatus(getString(R.string.title_connected_to, connectedDeviceName));
                             //chatArrayAdapter.clear();
+                            sendFriendRequest();
                             break;
                         case ChatService.STATE_CONNECTING:
-                            Log.d(TAG, "MainActivity: handleMessage MESSAGE_STATE_CHANGE STATE_CONNECTING");
+                            Log.d(TAG, "MainActivity: handleMessage MESSAGE_STATE_CHANGE STATE_CONNECTING");    //for paired devices??
                             setStatus(R.string.title_connecting);
+                            sendFriendRequest();
                             break;
                         case ChatService.STATE_LISTEN:
                         case ChatService.STATE_NONE:
@@ -154,17 +134,55 @@ public class Friends extends AppCompatActivity {
                     byte[] readBuf = (byte[]) msg.obj;
 
                     String readMessage = new String(readBuf, 0, msg.arg1);
+
                     Log.d(TAG, "readMessage:" + readMessage);
-                    if(readMessage.equals("vibrate")){
-                        Toast.makeText(Friends.this, "" + readMessage, Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(Friends.this, ""+ readMessage, Toast.LENGTH_LONG).show();
+
+                    String message = readMessage;
+
+                    //TODO: Test this on two real devices
+                    int _char = message.lastIndexOf("_");
+                    String messageCheck = message.substring(0,_char+1);
+                    final String friendsUid = message.substring(_char+1);
+                    Log.d(TAG,"TEMP messageCheck:" + messageCheck); //messageCheck:MONUMENTS_GO_FRIEND_REQUEST_
+                    Log.d(TAG,"TEMP friendsUid:" + friendsUid);
+                    Log.d(TAG,"TEMP FRIEND_REQUEST_CODE:" + FRIEND_REQUEST_CODE);//FRIEND_REQUEST_CODE:MONUMENTS_GO_FRIEND_REQUEST_
+                    if(messageCheck.equals(FRIEND_REQUEST_CODE)){
                         Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                         v.vibrate(500);
+
+                        new AlertDialog.Builder(Friends.this)
+                                .setTitle("Confirm friend request")
+                                .setMessage("Are you sure you want to become friends with a device\n" + connectedDeviceName + "\nUserID(" + friendsUid + ")")
+                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        Toast.makeText(Friends.this, "You accepted friend request!",Toast.LENGTH_SHORT).show();
+                                        FirebaseDatabase database;
+                                        DatabaseReference root;
+
+                                        //send friendship to the server
+                                        //TODO: this code can add many same friendships. Don't send friendship data if you are already friends with other user.
+                                        database = FirebaseDatabase.getInstance();
+                                        root = database.getReference("friends");
+                                        Friendship friendship = new Friendship(FirebaseAuth.getInstance().getCurrentUser().getUid(), friendsUid);
+
+                                        root.push().setValue(friendship);
+                                    }
+                                })
+                                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        Toast.makeText(Friends.this, "You declined friend request",Toast.LENGTH_SHORT).show();
+                                    }
+                                })
+                                .setIcon(android.R.drawable.ic_dialog_alert)
+                                .show();
                     }
+
                     //chatArrayAdapter.add(connectedDeviceName + ":  " + readMessage);
 
-                    SimpleDateFormat s = new SimpleDateFormat("ddMMyyyyhhmmss");
-                    String format = s.format(new Date());
-                    sendMessage("ok: " + format);
+                    //SimpleDateFormat s = new SimpleDateFormat("ddMMyyyyhhmmss");
+                    //String format = s.format(new Date());
+                    //sendMessage("ok: " + format);
                     break;
                 case MESSAGE_DEVICE_NAME:
                     Log.d(TAG, "MainActivity: handleMessage MESSAGE_DEVICE_NAME");
@@ -173,8 +191,7 @@ public class Friends extends AppCompatActivity {
                     break;
                 case MESSAGE_TOAST:
                     Log.d(TAG, "MainActivity: handleMessage MESSAGE_TOAST");
-                    Toast.makeText(getApplicationContext(),                            msg.getData().getString(TOAST), Toast.LENGTH_SHORT)
-                            .show();
+                    Toast.makeText(getApplicationContext(), msg.getData().getString(TOAST), Toast.LENGTH_SHORT).show();
                     break;
             }
             return false;
@@ -220,8 +237,7 @@ public class Friends extends AppCompatActivity {
                 if (resultCode == Activity.RESULT_OK) {
                     setupChat();
                 } else {
-                    Toast.makeText(this, R.string.bt_not_enabled_leaving,
-                            Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.bt_not_enabled_leaving, Toast.LENGTH_SHORT).show();
                     finish();
                 }
         }
@@ -231,7 +247,13 @@ public class Friends extends AppCompatActivity {
         Log.d(TAG, "MainActivity: connectDevice started");
         String address = data.getExtras().getString(DeviceListActivity.DEVICE_ADDRESS);
         BluetoothDevice device = bluetoothAdapter.getRemoteDevice(address);
-        chatService.connect(device, secure);
+        try{
+            chatService.connect(device, secure);
+        }catch (Exception e){
+            Toast.makeText(this, "Error! Other user must be in the Friends activity with activated Bluetooth.", Toast.LENGTH_LONG).show();
+            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            v.vibrate(500);
+        }
     }
 
     @Override
@@ -275,7 +297,7 @@ public class Friends extends AppCompatActivity {
     private void sendMessage(String message) {
         Log.d(TAG, "MainActivity: sendMessage started");
         if (chatService.getState() != ChatService.STATE_CONNECTED) {
-            Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
+            //Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -321,6 +343,13 @@ public class Friends extends AppCompatActivity {
         outStringBuffer = new StringBuffer("");
     }
 
+    private void sendFriendRequest(){
+        //TODO: When two devices are connected, send friend request. Show alert to confirm it.
+        String message = FRIEND_REQUEST_CODE + FirebaseAuth.getInstance().getCurrentUser().getUid();
+        Log.d(TAG, "MainActivity: addNewFriend sendingMessage:" + message);
+        sendMessage(message);
+    }
+
     @Override
     public void onStart() {
         super.onStart();
@@ -334,6 +363,25 @@ public class Friends extends AppCompatActivity {
                 setupChat();
         }
         */
+
+
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (!bluetoothAdapter.isEnabled()) {
+            //Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            //startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+        } else {
+
+            if (chatService == null) {
+                setupChat();
+            }
+        }
+        if (bluetoothAdapter == null) {
+            Toast.makeText(Friends.this, "Bluetooth is not available", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+        ensureDiscoverable();
+
     }
 
     @Override
@@ -351,9 +399,18 @@ public class Friends extends AppCompatActivity {
     public synchronized void onPause() {
         super.onPause();
         Log.d(TAG, "MainActivity: onPause started");
+        /*
         if (bluetoothAdapter.isEnabled()) {
             bluetoothAdapter.disable();
         }
+        */
+        /*
+        if (chatService != null) {
+            if (chatService.getState() != ChatService.STATE_NONE) {
+                chatService.stop();
+            }
+        }
+        */
     }
 
     @Override

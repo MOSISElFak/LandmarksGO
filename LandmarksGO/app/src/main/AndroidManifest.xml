@@ -27,7 +27,7 @@
         <activity android:name=".SettingsActivity" android:label="@string/title_activity_settings"/>
         <activity android:name=".landmark.AddLandmark" android:label="@string/title_activity_addlandmark"/>
         <activity android:name=".HighScore" android:label="@string/title_activity_highscore"/>
-        <activity android:name=".Friends" android:label="@string/title_activity_friends"/>
+        <activity android:name=".friends.Friends" android:label="@string/title_activity_friends"/>
         <activity android:name=".FriendsAddNew" android:label="@string/title_activity_friendsaddnew"/>
         <activity
             android:name=".bluetooth.DeviceListActivity"

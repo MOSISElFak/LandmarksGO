@@ -98,6 +98,7 @@ public class DeviceListActivity extends Activity {
 			tvDeviceListPairedDeviceTitle.setVisibility(View.VISIBLE);
 			for (BluetoothDevice device : pairedDevices) {
 				pairedDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+				//Toast.makeText(this,"Paired device: " + device.getName() + "\n" + device.getAddress(),Toast.LENGTH_SHORT).show();
 			}
 		} else {
 			String noDevices = getResources().getText(R.string.none_paired).toString();

@@ -11,6 +11,7 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.example.mosis.landmarksgo.R;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -75,11 +76,11 @@ public class AddLandmark extends AppCompatActivity implements AdapterView.OnItem
                 Double lon = Double.parseDouble(editLon.getText().toString());
                 Double lat = Double.parseDouble(editLat.getText().toString());
 
-                Landmark landmark = new Landmark(name, desc, type, lon, lat);
+                Landmark landmark = new Landmark(name, desc, type, lon, lat,  FirebaseAuth.getInstance().getCurrentUser().getUid());
 
                 // dodaj landmark u bazu
                 root.push().setValue(landmark);
-                Toast.makeText(AddLandmark.this, "New landmark added!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(AddLandmark.this, "Landmark " + name + " has been added!", Toast.LENGTH_SHORT).show();
                 finish();
             }
         });

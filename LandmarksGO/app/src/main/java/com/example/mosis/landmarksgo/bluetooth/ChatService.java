@@ -26,7 +26,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
-import com.example.mosis.landmarksgo.Friends;
+import com.example.mosis.landmarksgo.friends.Friends;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -242,12 +242,10 @@ public class ChatService {
 
 			try {
 				if (secure) {
-					tmp = bluetoothAdapter.listenUsingRfcommWithServiceRecord(
-							NAME_SECURE, MY_UUID_SECURE);
+					tmp = bluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME_SECURE, MY_UUID_SECURE);
 				} else {
 					tmp = bluetoothAdapter
-							.listenUsingInsecureRfcommWithServiceRecord(
-									NAME_INSECURE, MY_UUID_INSECURE);
+							.listenUsingInsecureRfcommWithServiceRecord(NAME_INSECURE, MY_UUID_INSECURE);
 				}
 			} catch (IOException e) {
 			}

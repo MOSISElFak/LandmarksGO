@@ -1,6 +1,5 @@
 package com.example.mosis.landmarksgo;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -18,7 +17,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
@@ -29,7 +27,9 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.example.mosis.landmarksgo.authentication.LoginActivity;
+import com.example.mosis.landmarksgo.friends.Friends;
 import com.example.mosis.landmarksgo.landmark.AddLandmark;
+import com.example.mosis.landmarksgo.landmark.Landmark;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -40,6 +40,11 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.HashMap;
 
@@ -289,11 +294,12 @@ public class MainActivity extends AppCompatActivity
 
         if(mMarker!=null){
             mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(mMarker.getPosition().latitude, mMarker.getPosition().longitude)));
+            mMarker.showInfoWindow();
             //TODO: Add smooth animation
 
             //Force hide the onscreen keyboard
-            InputMethodManager imm = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
-            imm.toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0);
+            //InputMethodManager imm = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
+            //imm.toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0);
         };
         Log.d(TAG, "MainActivity: searchMarker: found " + mMarker);
     }
@@ -336,14 +342,61 @@ public class MainActivity extends AppCompatActivity
         }
         mMap.setMyLocationEnabled(true);
 
-        addMarkers(-34, 151, "Sydney", true);
-        addMarkers(20, 100, "q", false);
-        addMarkers(-30, 111, "w", false);
-        addMarkers(40, 21, "e", false);
-        addMarkers(-50, 50, "r", false);
+        Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                loadLandmarksFromServer();
+            }
+        };
+        Thread loadLandmarksFromServerThread = new Thread(r);
+        loadLandmarksFromServerThread.start();
+
     }
 
-    private void addMarkers(float lat, float lng, String title, boolean moveCamera){
+    private void loadLandmarksFromServer() {
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference myRef = database.getReference("landmarks");
+
+        //https://firebase.google.com/docs/database/android/lists-of-data
+        ChildEventListener childEventListener = new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
+                Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
+
+                Landmark landmark = dataSnapshot.getValue(Landmark.class);
+                Log.d(TAG, "onChildAdded:" + landmark.title);
+                addMarkers(landmark.lat, landmark.lon, landmark.title, false);
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String previousChildName) {
+                Log.d(TAG, "onChildChanged:" + dataSnapshot.getKey());
+                //We don't have a ability to change a landmark
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+                Log.d(TAG, "onChildRemoved:" + dataSnapshot.getKey());
+                //We don't have a ability to change a landmark
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String previousChildName) {
+                Log.d(TAG, "onChildMoved:" + dataSnapshot.getKey());
+                //We don't have a ability to move a landmark in DB.
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.w(TAG, "postComments:onCancelled", databaseError.toException());
+                Toast.makeText(MainActivity.this, "Failed to load comments.", Toast.LENGTH_SHORT).show();
+            }
+        };
+        myRef.addChildEventListener(childEventListener);
+
+    }
+
+    private void addMarkers(double lat, double lng, String title, boolean moveCamera){
         Marker marker = mMap.addMarker(new MarkerOptions()
                 .position(new LatLng(lat, lng))
                 .title(title)
