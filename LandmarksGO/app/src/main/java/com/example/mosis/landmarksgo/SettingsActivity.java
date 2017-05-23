@@ -4,8 +4,10 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -23,6 +25,7 @@ import com.example.mosis.landmarksgo.authentication.LoginActivity;
 import com.example.mosis.landmarksgo.authentication.SignupActivity;
 import com.example.mosis.landmarksgo.authentication.User;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -34,6 +37,10 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
+
+import java.io.File;
+import java.io.IOException;
 
 public class SettingsActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener{
 
@@ -46,6 +53,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
     
     private Integer gpsRefresh;
     private Boolean friends_status, players_status, workback_status;
+    private Uri savedURI;
 
     private FirebaseAuth.AuthStateListener authListener;
     private FirebaseAuth auth;
@@ -68,7 +76,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         database = FirebaseDatabase.getInstance();
 
         //get storage reference
-        storage = FirebaseStorage.getInstance().getReference();
+        storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + user.getUid() + ".jpg");
 
         authListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -253,8 +261,19 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         camera.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                Intent takePicture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                startActivityForResult(takePicture, 0);
+                /*Intent takePicture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                startActivityForResult(takePicture, 0);*/
+
+                Intent imageIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+
+                File imagesFolder = new File(Environment.getExternalStorageDirectory(), "WorkingWithPhotosApp");
+                imagesFolder.mkdirs();
+
+                File image = new File(imagesFolder, "QR_1.png");
+                savedURI = Uri.fromFile(image);
+
+                imageIntent.putExtra(MediaStore.EXTRA_OUTPUT, savedURI);
+                startActivityForResult(imageIntent, 0);
             }
         });
         gallery.setOnClickListener(new View.OnClickListener(){
@@ -345,7 +364,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         // Ovde se brisu svi njegovi podaci iz baze
         database.getReference("scoreTable").child(userid).removeValue();
         database.getReference("users").child(userid).removeValue();
-        // TODO izbrisi ga i iz prijateljskih veza kasnije
+        // TODO izbrisi ga i iz prijateljskih veza kasnije, i photo u storage ako ima
     }
 
     @Override
@@ -365,11 +384,19 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         if (requestCode == 0 || requestCode == 1)
         {
             if (resultCode == RESULT_OK) {
-                Uri selectedImage = data.getData();
-                UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder().setPhotoUri(selectedImage).build();
+                if (data != null)
+                    savedURI = data.getData();
+                /*UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder().setPhotoUri(selectedImage).build();
                 user.updateProfile(profileUpdates).addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
+                        Toast.makeText(SettingsActivity.this, "Profile picture updated!", Toast.LENGTH_SHORT).show();
+                    }
+                });*/
+
+                storage.putFile(savedURI).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                    @Override
+                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                         Toast.makeText(SettingsActivity.this, "Profile picture updated!", Toast.LENGTH_SHORT).show();
                     }
                 });

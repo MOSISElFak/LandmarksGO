@@ -2,6 +2,8 @@ package com.example.mosis.landmarksgo;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -26,11 +28,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.model.GlideUrl;
 import com.example.mosis.landmarksgo.authentication.LoginActivity;
 import com.example.mosis.landmarksgo.friends.Friends;
 import com.example.mosis.landmarksgo.highscore.HighScore;
 import com.example.mosis.landmarksgo.landmark.AddLandmark;
 import com.example.mosis.landmarksgo.landmark.Landmark;
+import com.firebase.ui.storage.images.FirebaseImageLoader;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -39,6 +43,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
@@ -46,7 +51,13 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FileDownloadTask;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
 import java.util.HashMap;
 
 import static com.example.mosis.landmarksgo.R.id.map;
@@ -57,6 +68,8 @@ public class MainActivity extends AppCompatActivity
     private FirebaseAuth.AuthStateListener authListener;
     private FirebaseAuth auth;
     private FirebaseUser user;
+    private StorageReference storage;
+
     private static final String TAG = "LandmarksGO";
     private NavigationView navigationView;
 
@@ -72,6 +85,10 @@ public class MainActivity extends AppCompatActivity
 
         //get firebase auth instance
         auth = FirebaseAuth.getInstance();
+        user = auth.getCurrentUser();
+
+        //get storage reference
+        storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + user.getUid() + ".jpg");
 
         authListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -226,17 +243,28 @@ public class MainActivity extends AppCompatActivity
 
             Uri photoUrl = FirebaseAuth.getInstance().getCurrentUser().getPhotoUrl();
             Log.d(TAG, "MainActivity:changeUI: photoUrl=" + photoUrl);
-            ImageView profilePicture = (ImageView) headerView.findViewById(R.id.imageViewProfilePicture);
+            final ImageView profilePicture = (ImageView) headerView.findViewById(R.id.imageViewProfilePicture);
 
-            if(photoUrl==null){
+            /*if(photoUrl==null){
                 Glide.with(this).load(R.drawable.empty_profile_picture).into(profilePicture);
                 //Glide.with(this).load("https://lintvwane.files.wordpress.com/2016/01/obama-guns_carr.jpg").into(profilePicture);
                 //Bitmap too large to be uploaded into a texture (5428x3698, max=4096x4096)
                 //We probably will probably get 50x50 pictures, so this won't be a problem
             }else{
                 Glide.with(this).load(photoUrl).into(profilePicture);   //TODO: Test if this works. Add Facebook or Google as sign-in option
-            }
+            }*/
             //TODO: Make picture round, not square.
+
+            final long ONE_MEGABYTE = 1024 * 1024;
+
+            //download file as a byte array
+            storage.getBytes(ONE_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+                @Override
+                public void onSuccess(byte[] bytes) {
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    profilePicture.setImageBitmap(bitmap);
+                }
+            });
 
             final float scale = getResources().getDisplayMetrics().density;
             int dpWidthInPx  = (int) (150 * scale);
