@@ -28,6 +28,7 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.example.mosis.landmarksgo.authentication.LoginActivity;
 import com.example.mosis.landmarksgo.friends.Friends;
+import com.example.mosis.landmarksgo.highscore.HighScore;
 import com.example.mosis.landmarksgo.landmark.AddLandmark;
 import com.example.mosis.landmarksgo.landmark.Landmark;
 import com.google.android.gms.maps.CameraUpdateFactory;
