@@ -7,7 +7,8 @@ import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.drawable.Drawable;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -35,6 +36,7 @@ import com.example.mosis.landmarksgo.bluetooth.ChatService;
 import com.example.mosis.landmarksgo.bluetooth.DeviceListActivity;
 import com.example.mosis.landmarksgo.highscore.CustomAdapter;
 import com.example.mosis.landmarksgo.highscore.DataModel;
+import com.example.mosis.landmarksgo.other.CircularImage;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
@@ -75,12 +77,12 @@ public class Friends extends AppCompatActivity {
             }
         });
 
-        String uri = "@drawable/obama";  // where myresource (without the extension) is the file
-        int imageResource = getResources().getIdentifier(uri, null, getPackageName());
-        Drawable res = getResources().getDrawable(imageResource);
+        //TODO: Load stuff from server
+        Bitmap bitmap =  BitmapFactory.decodeResource(this.getResources(), R.drawable.obama);
 
-        dataModels.add(new DataModel("President",100,res, 1));
-        dataModels.add(new DataModel("",50,null, 2));
+        dataModels.add(new DataModel("President",100,bitmap, 1));
+        bitmap = CircularImage.getCroppedBitmap(bitmap);
+        dataModels.add(new DataModel("Circular",50,bitmap, 2));
         dataModels.add(new DataModel("",0,null, 3));
         adapter.notifyDataSetChanged();
     }

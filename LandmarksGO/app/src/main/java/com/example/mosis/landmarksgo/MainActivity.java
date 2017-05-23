@@ -27,14 +27,12 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.model.GlideUrl;
 import com.example.mosis.landmarksgo.authentication.LoginActivity;
 import com.example.mosis.landmarksgo.friends.Friends;
 import com.example.mosis.landmarksgo.highscore.HighScore;
 import com.example.mosis.landmarksgo.landmark.AddLandmark;
 import com.example.mosis.landmarksgo.landmark.Landmark;
-import com.firebase.ui.storage.images.FirebaseImageLoader;
+import com.example.mosis.landmarksgo.other.CircularImage;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -43,6 +41,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -57,7 +56,6 @@ import com.google.firebase.storage.StorageReference;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.HashMap;
 
 import static com.example.mosis.landmarksgo.R.id.map;
@@ -77,18 +75,14 @@ public class MainActivity extends AppCompatActivity
     private HashMap<String, Marker> mapMarkers = new HashMap<String, Marker>();
 
     private int spinnerSelectedSearchOption;
+    static File localFileProfileImage = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
 
-        //get firebase auth instance
         auth = FirebaseAuth.getInstance();
         user = auth.getCurrentUser();
-
-        //get storage reference
-        storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + user.getUid() + ".jpg");
 
         authListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -103,54 +97,52 @@ public class MainActivity extends AppCompatActivity
             }
         };
 
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        if(user!=null){
+            setUpLayout();
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                //Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG).setAction("Action", null).show();
-                Intent intent = new Intent(MainActivity.this, AddLandmark.class);
-                startActivity(intent);
-            }
-        });
+            //Google Maps
+            SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(map);
+            mapFragment.getMapAsync(this);
 
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawer.setDrawerListener(toggle);
-        toggle.syncState();
-
-        //Navigation Drawer
-        navigationView = (NavigationView) findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(this);
-
-        //Google Maps
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(map);
-        mapFragment.getMapAsync(this);
-
-        Spinner spinner = (Spinner) findViewById(R.id.spinnerMapSearchCategory);
-        spinner.setOnItemSelectedListener(this);
-
-        customizeUI();
-
-        setUpSearchView();
-
+            //storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + user.getUid() + ".jpg");
+        }
     }
 
     @Override
     public void onStart() {
         super.onStart();
+        Log.d(TAG, "onStart");
         auth.addAuthStateListener(authListener);
     }
 
     @Override
     public void onStop() {
         super.onStop();
+        Log.d(TAG, "onStop");
         if (authListener != null) {
             auth.removeAuthStateListener(authListener);
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume");
+        if(user!=null){
+            customizeUI();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "onDestroy");
     }
 
     @Override
@@ -205,7 +197,10 @@ public class MainActivity extends AppCompatActivity
             Intent intent = new Intent(MainActivity.this,SettingsActivity.class);
             startActivity(intent);
         } else if (id == R.id.nav_exit){
-            finish();
+            moveTaskToBack(true);
+            android.os.Process.killProcess(android.os.Process.myPid());
+            System.exit(1);
+            //TODO: Stop background service .
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -214,6 +209,37 @@ public class MainActivity extends AppCompatActivity
     }
 
     ///////////////////////////////////////////////////////
+
+    private void setUpLayout() {
+        setContentView(R.layout.activity_main);
+
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, AddLandmark.class);
+                startActivity(intent);
+            }
+        });
+
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        drawer.setDrawerListener(toggle);
+        toggle.syncState();
+
+        //Navigation Drawer
+        navigationView = (NavigationView) findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(this);
+
+        //Search above map
+        Spinner spinner = (Spinner) findViewById(R.id.spinnerMapSearchCategory);
+        spinner.setOnItemSelectedListener(this);
+
+        setUpSearchView();
+    }
 
     private void customizeUI() {
         Log.d(TAG, "MainActivity:changeUI:photoUrl started");
@@ -227,7 +253,7 @@ public class MainActivity extends AppCompatActivity
             String email = user.getEmail();
 
             Log.d(TAG, "MainActivity:changeUI: displayName=" + displayName);
-            TextView profileName = (TextView) headerView.findViewById(R.id.textViewProfileName);
+            final TextView profileName = (TextView) headerView.findViewById(R.id.textViewProfileName);
             if(displayName!=null){
                 profileName.setText(displayName);
             }else{
@@ -241,36 +267,7 @@ public class MainActivity extends AppCompatActivity
                 profileEmail.setText(email);
             }
 
-            Uri photoUrl = FirebaseAuth.getInstance().getCurrentUser().getPhotoUrl();
-            Log.d(TAG, "MainActivity:changeUI: photoUrl=" + photoUrl);
-            final ImageView profilePicture = (ImageView) headerView.findViewById(R.id.imageViewProfilePicture);
-
-            /*if(photoUrl==null){
-                Glide.with(this).load(R.drawable.empty_profile_picture).into(profilePicture);
-                //Glide.with(this).load("https://lintvwane.files.wordpress.com/2016/01/obama-guns_carr.jpg").into(profilePicture);
-                //Bitmap too large to be uploaded into a texture (5428x3698, max=4096x4096)
-                //We probably will probably get 50x50 pictures, so this won't be a problem
-            }else{
-                Glide.with(this).load(photoUrl).into(profilePicture);   //TODO: Test if this works. Add Facebook or Google as sign-in option
-            }*/
-            //TODO: Make picture round, not square.
-
-            final long ONE_MEGABYTE = 1024 * 1024;
-
-            //download file as a byte array
-            storage.getBytes(ONE_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
-                @Override
-                public void onSuccess(byte[] bytes) {
-                    Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-                    profilePicture.setImageBitmap(bitmap);
-                }
-            });
-
-            final float scale = getResources().getDisplayMetrics().density;
-            int dpWidthInPx  = (int) (150 * scale);
-            int dpHeightInPx = (int) (150 * scale);
-            profilePicture.setMaxHeight(dpHeightInPx);
-            profilePicture.setMaxWidth(dpWidthInPx);
+            changeProfilePhoto(headerView);
         }
 
         //Spinner for search
@@ -281,6 +278,37 @@ public class MainActivity extends AppCompatActivity
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         // Apply the adapter to the spinner
         spinner.setAdapter(adapter);
+    }
+
+    private void changeProfilePhoto(View headerView) {
+        //TODO: Save file app folder, load that file first then download.
+        Uri photoUrl = FirebaseAuth.getInstance().getCurrentUser().getPhotoUrl();
+        Log.d(TAG, "MainActivity:changeUI: photoUrl=" + photoUrl);
+
+        final ImageView profilePicture = (ImageView) headerView.findViewById(R.id.imageViewProfilePicture);
+
+        try {
+            localFileProfileImage = File.createTempFile("profileImage",".jpg");
+            Log.d(TAG,"localFile.getAbsolutePath()" + localFileProfileImage.getAbsolutePath());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + user.getUid() + ".jpg");
+        storage.getFile(localFileProfileImage).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+            @Override
+            public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                Bitmap bitmap = BitmapFactory.decodeFile(localFileProfileImage.getAbsolutePath());
+                bitmap = CircularImage.getCroppedBitmap(bitmap);
+
+                profilePicture.setImageBitmap(bitmap);
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception exception) {
+                Toast.makeText(MainActivity.this, "Error downloading/saving profile image", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     //for Search above map
@@ -390,8 +418,7 @@ public class MainActivity extends AppCompatActivity
         ChildEventListener childEventListener = new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
-                Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
-
+                //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
                 Landmark landmark = dataSnapshot.getValue(Landmark.class);
                 Log.d(TAG, "onChildAdded:" + landmark.title);
                 addMarkers(landmark.lat, landmark.lon, landmark.title, false);
@@ -418,11 +445,9 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onCancelled(DatabaseError databaseError) {
                 Log.w(TAG, "postComments:onCancelled", databaseError.toException());
-                Toast.makeText(MainActivity.this, "Failed to load comments.", Toast.LENGTH_SHORT).show();
             }
         };
         myRef.addChildEventListener(childEventListener);
-
     }
 
     private void addMarkers(double lat, double lng, String title, boolean moveCamera){

@@ -8,8 +8,9 @@
 
     <ImageView
         android:id="@+id/imageViewUserPhoto"
-        android:layout_width="100dp"
-        android:layout_height="100dp"/>
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:padding="@dimen/friends_spacing"/>
 
     <LinearLayout
         android:layout_width="wrap_content"

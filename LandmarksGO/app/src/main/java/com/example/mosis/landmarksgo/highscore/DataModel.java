@@ -1,6 +1,6 @@
 package com.example.mosis.landmarksgo.highscore;
 
-import android.graphics.drawable.Drawable;
+import android.graphics.Bitmap;
 
 /**
  * Created by k on 5/22/2017.
@@ -10,10 +10,10 @@ public class DataModel {
 
     String name;
     int points;
-    Drawable photo;
+    Bitmap photo;
     int number;
 
-    public DataModel(String name, int points, Drawable photo, int number) {
+    public DataModel(String name, int points, Bitmap photo, int number) {
         this.name=name;
         this.points= points;
         this.photo= photo;
@@ -28,7 +28,7 @@ public class DataModel {
         return points;
     }
 
-    public Drawable getPhoto() {
+    public Bitmap getPhoto() {
         return photo;
     }
 
