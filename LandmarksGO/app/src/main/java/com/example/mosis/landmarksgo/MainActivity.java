@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -28,6 +30,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.mosis.landmarksgo.authentication.LoginActivity;
+import com.example.mosis.landmarksgo.authentication.User;
 import com.example.mosis.landmarksgo.friends.Friends;
 import com.example.mosis.landmarksgo.highscore.HighScore;
 import com.example.mosis.landmarksgo.landmark.AddLandmark;
@@ -72,10 +75,16 @@ public class MainActivity extends AppCompatActivity
     private NavigationView navigationView;
 
     private GoogleMap mMap;
-    private HashMap<String, Marker> mapMarkers = new HashMap<String, Marker>();
+    private HashMap<String, Marker> mapMarkersLandmarks = new HashMap<String, Marker>();
+    private HashMap<User, Marker> mapMarkersUsers = new HashMap<User, Marker>();
 
     private int spinnerSelectedSearchOption;
     static File localFileProfileImage = null;
+
+    private Marker myLocation = null;
+
+    public static final int MARKER_LANDMARK = 1;
+    public static final int MARKER_USER = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -346,7 +355,7 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "MainActivity: searchMarker: spinnerSelectedSearchOption=" + spinnerSelectedSearchOption);
         Marker mMarker = null;
         if(spinnerSelectedSearchOption==0){ //searching for name
-            mMarker = mapMarkers.get(query);
+            mMarker = mapMarkersLandmarks.get(query);
         }
 
         if(mMarker!=null){
@@ -399,10 +408,35 @@ public class MainActivity extends AppCompatActivity
         }
         mMap.setMyLocationEnabled(true);
 
+        //TODO: Make this better
+        int height = 50;
+        int width = 50;
+        BitmapDrawable bitmapdraw=(BitmapDrawable)getResources().getDrawable(R.drawable.obama);
+        Bitmap b=bitmapdraw.getBitmap();
+        final Bitmap smallMarker = Bitmap.createScaledBitmap(b, width, height, false);
+
+        if (mMap != null) {
+            mMap.setOnMyLocationChangeListener(new GoogleMap.OnMyLocationChangeListener() {
+                @Override
+                public void onMyLocationChange(Location arg0) {
+                    //mMap.addMarker(new MarkerOptions().position(new LatLng(arg0.getLatitude(), arg0.getLongitude())).title("It's Me!"));
+                    if(myLocation!=null){
+                        myLocation.remove();
+                    }
+
+                    //addMarkers(arg0.getLatitude(),arg0.getLongitude(),"I","", smallMarker, false, MARKER_USER);
+
+                    DatabaseReference users = FirebaseDatabase.getInstance().getReference("users");
+                    users.child(user.getUid()).child("lat").setValue(arg0.getLatitude());
+                    users.child(user.getUid()).child("lon").setValue(arg0.getLongitude());
+                }
+            });
+        }
         Runnable r = new Runnable() {
             @Override
             public void run() {
                 loadLandmarksFromServer();
+                loadAllPlayersFromServer();
             }
         };
         Thread loadLandmarksFromServerThread = new Thread(r);
@@ -421,7 +455,10 @@ public class MainActivity extends AppCompatActivity
                 //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
                 Landmark landmark = dataSnapshot.getValue(Landmark.class);
                 Log.d(TAG, "onChildAdded:" + landmark.title);
-                addMarkers(landmark.lat, landmark.lon, landmark.title, false);
+                Marker marker = addMarkers(landmark.lat, landmark.lon, landmark.title, landmark.desc, null, false, MARKER_LANDMARK);
+
+                //Add to searchable HashMap
+                mapMarkersLandmarks.put(landmark.title, marker);
             }
 
             @Override
@@ -450,18 +487,89 @@ public class MainActivity extends AppCompatActivity
         myRef.addChildEventListener(childEventListener);
     }
 
-    private void addMarkers(double lat, double lng, String title, boolean moveCamera){
-        Marker marker = mMap.addMarker(new MarkerOptions()
-                .position(new LatLng(lat, lng))
-                .title(title)
-                .snippet("Latitude:" + lat + " " + "Longitude:" + lng + " ")
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+    private void loadAllPlayersFromServer() {
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference myRef = database.getReference("users");
+
+        //https://firebase.google.com/docs/database/android/lists-of-data
+        ChildEventListener childEventListener = new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
+                //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
+                User user = dataSnapshot.getValue(User.class);
+                Log.d(TAG, "onChildAdded:" + user.firstName);
+                Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, null, false, MARKER_USER);
+
+                //Add to searchable HashMap
+                mapMarkersUsers.put(user, marker);
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String previousChildName) {
+                Log.d(TAG, "onChildChanged:" + dataSnapshot.getKey());
+                /*
+                User user = dataSnapshot.getValue(User.class);
+                Log.d(TAG, "onChildAdded:" + user.firstName);
+                addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, null, false, MARKER_USER);
+
+                Marker mMarker = null;
+                mMarker = mapMarkersLandmarks.get(user);
+
+                if(mMarker!=null) {
+
+                }
+                */
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+                Log.d(TAG, "onChildRemoved:" + dataSnapshot.getKey());
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String previousChildName) {
+                Log.d(TAG, "onChildMoved:" + dataSnapshot.getKey());
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.w(TAG, "postComments:onCancelled", databaseError.toException());
+            }
+        };
+        myRef.addChildEventListener(childEventListener);
+    }
+
+    private Marker addMarkers(double lat, double lng, String title, String snippet, Bitmap icon, boolean moveCamera, int type){
+        Marker marker = null;
+        if(icon==null){
+            if(type==MARKER_LANDMARK){
+                marker = mMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(lat, lng))
+                        .title(title)
+                        .snippet(snippet)
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+            }
+            if(type==MARKER_USER){
+                marker = mMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(lat, lng))
+                        .title(title)
+                        .snippet(snippet)
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+            }
+
+        }else{
+            marker = mMap.addMarker(new MarkerOptions()
+                    .position(new LatLng(lat, lng))
+                    .title(title)
+                    .snippet(snippet)
+                    .icon(BitmapDescriptorFactory.fromBitmap(icon)));
+        }
 
         if(moveCamera){
             mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(lat, lng)));
+            // Zoom in the Google Map
+            //mMap.animateCamera(CameraUpdateFactory.zoomTo(5));
         }
-        //Add to searchable HashMap
-        mapMarkers.put(title, marker);
+        return marker;
     }
-
 }
