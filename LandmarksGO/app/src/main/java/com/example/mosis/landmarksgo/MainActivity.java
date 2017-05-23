@@ -76,7 +76,7 @@ public class MainActivity extends AppCompatActivity
 
     private GoogleMap mMap;
     private HashMap<String, Marker> mapMarkersLandmarks = new HashMap<String, Marker>();
-    private HashMap<User, Marker> mapMarkersUsers = new HashMap<User, Marker>();
+    private HashMap<String, Marker> mapMarkersUsers = new HashMap<String, Marker>();
 
     private int spinnerSelectedSearchOption;
     static File localFileProfileImage = null;
@@ -315,7 +315,8 @@ public class MainActivity extends AppCompatActivity
         }).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception exception) {
-                Toast.makeText(MainActivity.this, "Error downloading/saving profile image", Toast.LENGTH_SHORT).show();
+                //Toast.makeText(MainActivity.this, "Error downloading/saving profile image", Toast.LENGTH_SHORT).show();
+                //TODO: Can't display this, maybe user doesn't have a profile photo
             }
         });
     }
@@ -432,16 +433,24 @@ public class MainActivity extends AppCompatActivity
                 }
             });
         }
+
         Runnable r = new Runnable() {
             @Override
             public void run() {
                 loadLandmarksFromServer();
-                loadAllPlayersFromServer();
             }
         };
         Thread loadLandmarksFromServerThread = new Thread(r);
         loadLandmarksFromServerThread.start();
 
+        Runnable r2 = new Runnable() {
+            @Override
+            public void run() {
+                loadAllPlayersFromServer();
+            }
+        };
+        Thread loadAllPlayersFromServerThread = new Thread(r2);
+        loadAllPlayersFromServerThread.start();
     }
 
     private void loadLandmarksFromServer() {
@@ -497,28 +506,33 @@ public class MainActivity extends AppCompatActivity
             public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
                 //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
                 User user = dataSnapshot.getValue(User.class);
-                Log.d(TAG, "onChildAdded:" + user.firstName);
+                Log.d(TAG, "onChildAdded:" + user.firstName + " uid:" + user.uid);
                 Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, null, false, MARKER_USER);
 
-                //Add to searchable HashMap
-                mapMarkersUsers.put(user, marker);
+                mapMarkersUsers.put(user.uid, marker);
             }
 
             @Override
             public void onChildChanged(DataSnapshot dataSnapshot, String previousChildName) {
-                Log.d(TAG, "onChildChanged:" + dataSnapshot.getKey());
-                /*
+                //Log.d(TAG, "onChildChanged:" + dataSnapshot.getKey());
                 User user = dataSnapshot.getValue(User.class);
-                Log.d(TAG, "onChildAdded:" + user.firstName);
-                addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, null, false, MARKER_USER);
+                //Log.d(TAG, "onChildChanged:" + user.firstName + " uid:" + user.uid);
 
-                Marker mMarker = null;
-                mMarker = mapMarkersLandmarks.get(user);
+                Marker mMarker;
+                mMarker = mapMarkersUsers.get(user.uid);
 
                 if(mMarker!=null) {
+                    Log.d(TAG,"Brisem marker");
+                    mMarker.remove();
+                    Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, null, false, MARKER_USER);
 
+                    //Add to searchable HashMap
+                    mapMarkersUsers.remove(user.uid);
+                    mapMarkersUsers.put(user.uid, marker);
+                }else{
+                    Log.d(TAG,"Ne brisem marker");
                 }
-                */
+
             }
 
             @Override

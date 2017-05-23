@@ -14,13 +14,14 @@ public class User {
     public Boolean showfriends;
     public Boolean showplayers;
     public Boolean workback;
+    public String uid;
 
     public User()
     {
 
     }
 
-    public User(String firstName, String lastName)
+    public User(String firstName, String lastName, String uid)
     {
         this.firstName = firstName;
         this.lastName = lastName;
@@ -30,6 +31,7 @@ public class User {
         this.showfriends = true;
         this.showplayers = true;
         this.workback = false;
+        this.uid = uid;
     }
 
     public void setLocation(Double lat, Double lon)

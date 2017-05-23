@@ -132,7 +132,7 @@ public class SignupActivity extends AppCompatActivity {
 
     private void addUserInDatabase(String userid,String first, String last)
     {
-        User newUser = new User(first, last);
+        User newUser = new User(first, last, userid);
         users.child(userid).setValue(newUser);
         database.getReference("scoreTable").child(userid).child("name").setValue(first + " " + last);
         database.getReference("scoreTable").child(userid).child("points").setValue(0);
