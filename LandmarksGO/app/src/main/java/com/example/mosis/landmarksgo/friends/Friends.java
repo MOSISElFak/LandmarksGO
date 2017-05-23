@@ -36,7 +36,7 @@ import com.example.mosis.landmarksgo.bluetooth.ChatService;
 import com.example.mosis.landmarksgo.bluetooth.DeviceListActivity;
 import com.example.mosis.landmarksgo.highscore.CustomAdapter;
 import com.example.mosis.landmarksgo.highscore.DataModel;
-import com.example.mosis.landmarksgo.other.CircularImage;
+import com.example.mosis.landmarksgo.other.BitmapManipulation;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
@@ -81,7 +81,7 @@ public class Friends extends AppCompatActivity {
         Bitmap bitmap =  BitmapFactory.decodeResource(this.getResources(), R.drawable.obama);
 
         dataModels.add(new DataModel("President",100,bitmap, 1));
-        bitmap = CircularImage.getCroppedBitmap(bitmap);
+        bitmap = BitmapManipulation.getCroppedBitmap(bitmap);
         dataModels.add(new DataModel("Circular",50,bitmap, 2));
         dataModels.add(new DataModel("",0,null, 3));
         adapter.notifyDataSetChanged();
@@ -394,7 +394,7 @@ public class Friends extends AppCompatActivity {
         }
         */
 
-
+        //TODO: Move this to FAB
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (!bluetoothAdapter.isEnabled()) {
             //Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);

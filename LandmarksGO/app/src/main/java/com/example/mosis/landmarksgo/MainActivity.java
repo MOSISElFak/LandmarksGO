@@ -35,7 +35,7 @@ import com.example.mosis.landmarksgo.friends.Friends;
 import com.example.mosis.landmarksgo.highscore.HighScore;
 import com.example.mosis.landmarksgo.landmark.AddLandmark;
 import com.example.mosis.landmarksgo.landmark.Landmark;
-import com.example.mosis.landmarksgo.other.CircularImage;
+import com.example.mosis.landmarksgo.other.BitmapManipulation;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -86,6 +86,9 @@ public class MainActivity extends AppCompatActivity
     public static final int MARKER_LANDMARK = 1;
     public static final int MARKER_USER = 2;
 
+    private static Bitmap profilePhotoBitmap=null;
+    private static View headerView;
+    private static ImageView profilePicture;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -256,7 +259,7 @@ public class MainActivity extends AppCompatActivity
         if(user!=null) {
             Log.d(TAG, "MainActivity:changeUI: user!=null");
 
-            View headerView = navigationView.getHeaderView(0);
+            headerView = navigationView.getHeaderView(0);
 
             String displayName = user.getDisplayName();
             String email = user.getEmail();
@@ -276,7 +279,8 @@ public class MainActivity extends AppCompatActivity
                 profileEmail.setText(email);
             }
 
-            changeProfilePhoto(headerView);
+            profilePicture = (ImageView) headerView.findViewById(R.id.imageViewProfilePicture);
+            changeProfilePhoto(headerView, profilePicture);
         }
 
         //Spinner for search
@@ -289,12 +293,10 @@ public class MainActivity extends AppCompatActivity
         spinner.setAdapter(adapter);
     }
 
-    private void changeProfilePhoto(View headerView) {
+    private void changeProfilePhoto(View headerView, final ImageView iv) {
         //TODO: Save file app folder, load that file first then download.
         Uri photoUrl = FirebaseAuth.getInstance().getCurrentUser().getPhotoUrl();
         Log.d(TAG, "MainActivity:changeUI: photoUrl=" + photoUrl);
-
-        final ImageView profilePicture = (ImageView) headerView.findViewById(R.id.imageViewProfilePicture);
 
         try {
             localFileProfileImage = File.createTempFile("profileImage",".jpg");
@@ -308,9 +310,14 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
                 Bitmap bitmap = BitmapFactory.decodeFile(localFileProfileImage.getAbsolutePath());
-                bitmap = CircularImage.getCroppedBitmap(bitmap);
+                if(bitmap!=null){
+                    Log.d(TAG,"Bitmap is NOT null");
+                    bitmap = BitmapManipulation.getCroppedBitmap(bitmap);
+                    iv.setImageBitmap(bitmap);
+                }else{
+                    Log.d(TAG,"Bitmap is null");
+                }
 
-                profilePicture.setImageBitmap(bitmap);
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
@@ -388,6 +395,15 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+                Toast.makeText(getApplicationContext(), marker.getTitle(), Toast.LENGTH_SHORT).show();
+                return false;
+
+            }
+        });
 
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
@@ -507,7 +523,9 @@ public class MainActivity extends AppCompatActivity
                 //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
                 User user = dataSnapshot.getValue(User.class);
                 Log.d(TAG, "onChildAdded:" + user.firstName + " uid:" + user.uid);
-                Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, null, false, MARKER_USER);
+
+                Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.empty_profile_picture); //TODO: Download profile photo for each unique user
+                Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, bitmap, false, MARKER_USER);
 
                 mapMarkersUsers.put(user.uid, marker);
             }
@@ -555,28 +573,20 @@ public class MainActivity extends AppCompatActivity
 
     private Marker addMarkers(double lat, double lng, String title, String snippet, Bitmap icon, boolean moveCamera, int type){
         Marker marker = null;
-        if(icon==null){
-            if(type==MARKER_LANDMARK){
-                marker = mMap.addMarker(new MarkerOptions()
-                        .position(new LatLng(lat, lng))
-                        .title(title)
-                        .snippet(snippet)
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-            }
-            if(type==MARKER_USER){
-                marker = mMap.addMarker(new MarkerOptions()
-                        .position(new LatLng(lat, lng))
-                        .title(title)
-                        .snippet(snippet)
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
-            }
-
-        }else{
+        if(type==MARKER_LANDMARK){
             marker = mMap.addMarker(new MarkerOptions()
                     .position(new LatLng(lat, lng))
                     .title(title)
                     .snippet(snippet)
-                    .icon(BitmapDescriptorFactory.fromBitmap(icon)));
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+        }
+        if(type==MARKER_USER){
+            marker = mMap.addMarker(new MarkerOptions()
+                    .position(new LatLng(lat, lng))
+                    .title(title)
+                    .snippet(snippet)
+                    //.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+                    .icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(icon, MainActivity.this))));
         }
 
         if(moveCamera){
