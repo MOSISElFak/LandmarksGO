@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -22,6 +23,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
@@ -31,13 +33,17 @@ import android.widget.Toast;
 import com.example.mosis.landmarksgo.R;
 import com.example.mosis.landmarksgo.bluetooth.ChatService;
 import com.example.mosis.landmarksgo.bluetooth.DeviceListActivity;
+import com.example.mosis.landmarksgo.highscore.CustomAdapter;
+import com.example.mosis.landmarksgo.highscore.DataModel;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.util.ArrayList;
+
 public class Friends extends AppCompatActivity {
     public static final String FRIEND_REQUEST_CODE = "MONUMENTS_GO_FRIEND_REQUEST_";
-
+    private static ArrayList<DataModel> dataModels;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,6 +61,28 @@ public class Friends extends AppCompatActivity {
                 addNewFriend();
             }
         });
+
+        dataModels = new ArrayList<>();
+        ListView listView = (ListView) findViewById(R.id.listViewFriends);
+        CustomAdapter adapter;
+        adapter= new CustomAdapter(dataModels,getApplicationContext());
+        listView.setAdapter(adapter);
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                DataModel dataModel= dataModels.get(position);
+                Toast.makeText(Friends.this,"" + dataModel.getName(),Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        String uri = "@drawable/obama";  // where myresource (without the extension) is the file
+        int imageResource = getResources().getIdentifier(uri, null, getPackageName());
+        Drawable res = getResources().getDrawable(imageResource);
+
+        dataModels.add(new DataModel("President",100,res, 1));
+        dataModels.add(new DataModel("",50,null, 2));
+        dataModels.add(new DataModel("",0,null, 3));
+        adapter.notifyDataSetChanged();
     }
 
     private void addNewFriend() {

@@ -8,10 +8,9 @@
     android:orientation="vertical">
 
     <ListView
+        android:id="@+id/listViewFriends"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        tools:layout_editor_absoluteX="8dp"
-        tools:layout_editor_absoluteY="8dp" />
+        android:layout_height="match_parent" />
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/fabAddNewFriend"
