@@ -400,6 +400,7 @@ public class MainActivity extends AppCompatActivity
             @Override
             public boolean onMarkerClick(Marker marker) {
                 Toast.makeText(getApplicationContext(), marker.getTitle(), Toast.LENGTH_SHORT).show();
+
                 return false;
 
             }
@@ -521,14 +522,12 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
                 //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
-                User user = dataSnapshot.getValue(User.class);
+                final User user = dataSnapshot.getValue(User.class);
                 Log.d(TAG, "onChildAdded:" + user.firstName + " uid:" + user.uid);
 
-                Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.empty_profile_picture); //TODO: Download profile photo for each unique user
-                Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, bitmap, false, MARKER_USER);
-
+                Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, user.uid, null, false, MARKER_USER);
                 mapMarkersUsers.put(user.uid, marker);
-            }
+        }
 
             @Override
             public void onChildChanged(DataSnapshot dataSnapshot, String previousChildName) {
@@ -586,7 +585,8 @@ public class MainActivity extends AppCompatActivity
                     .title(title)
                     .snippet(snippet)
                     //.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
-                    .icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(icon, MainActivity.this))));
+                    //.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(icon, MainActivity.this)))); //of course, this takes too much time to process
+                    .icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(R.drawable.person, MainActivity.this)))); //of course, this takes too much time to process
         }
 
         if(moveCamera){
