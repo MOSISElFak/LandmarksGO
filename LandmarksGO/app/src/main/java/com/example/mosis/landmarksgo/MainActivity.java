@@ -60,7 +60,11 @@ import com.google.firebase.storage.StorageReference;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
 
 import static com.example.mosis.landmarksgo.R.id.map;
 
@@ -212,7 +216,75 @@ public class MainActivity extends AppCompatActivity
             startActivity(intent);
             return true;
         }
+
+        if (id == R.id.action_sendfriendrequest) {
+            //TODO: temporary
+            //DatabaseReference dbRef = database.getReference("friends/");
+
+            //dbRef.push().setValue(friendship);
+            //dbRef.child(myUid).setValue(getRandomFriendship());
+            //root.child(user.getUid()).setValue(friendship);
+
+            //Query phoneQuery = dbRef.orderByChild(myUid).equalTo(myUid);
+            //Query phoneQuery = dbRef.equalTo(myUid);
+
+            pushRandomFriendships(user.getUid());
+            return true;
+        }
+
+        if (id==R.id.action_getfriends){
+            Log.d(TAG,"My myUid:" + user.getUid());
+            getFriends();
+        }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void getFriends() {
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference dbRef = database.getReference("friends/" + user.getUid());
+        dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Log.d(TAG,"u valueevent listener: count " + dataSnapshot.getChildrenCount());
+                for(DataSnapshot singleSnapshot : dataSnapshot.getChildren()){
+                    String json = singleSnapshot.toString();
+                    Log.d(TAG,"json: " + json);
+
+                    //TODO: deserialize via class, not like this
+                    String friendUid = json.substring(json.indexOf("value = ") + 8);
+                    Log.d(TAG,"friendUid: " + friendUid);
+                }
+            }
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.e(TAG, "onCancelled", databaseError.toException());
+            }
+        });
+    }
+
+    @NonNull
+    private String getRandomFirebaseUid() {
+        String randomUid = UUID.randomUUID().toString();
+        randomUid = randomUid.replaceAll("-", "");
+        randomUid = randomUid.substring(0, 28);
+        return randomUid;
+    }
+
+    private List<String> getRandomFriendship(){
+        Random ran = new Random();
+        int x = ran.nextInt(6) + 1;
+        List<String> friendsList = new ArrayList<>();
+        for(int i=0;i<x;i++){
+            friendsList.add(getRandomFirebaseUid());
+        }
+        //return new Friendship(user.getUid(), friendsList);
+        return friendsList;
+    }
+
+    private void pushRandomFriendships(String uid){
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference dbRef = database.getReference("friends/");
+        dbRef.child(uid).setValue(getRandomFriendship());
     }
 
     @SuppressWarnings("StatementWithEmptyBody")

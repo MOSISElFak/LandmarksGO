@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Vibrator;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.ActionBar;
@@ -32,15 +33,25 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.mosis.landmarksgo.R;
+import com.example.mosis.landmarksgo.authentication.User;
 import com.example.mosis.landmarksgo.bluetooth.ChatService;
 import com.example.mosis.landmarksgo.bluetooth.DeviceListActivity;
 import com.example.mosis.landmarksgo.highscore.CustomAdapter;
 import com.example.mosis.landmarksgo.highscore.DataModel;
 import com.example.mosis.landmarksgo.other.BitmapManipulation;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
+import java.io.File;
 import java.util.ArrayList;
 
 public class Friends extends AppCompatActivity {
@@ -60,13 +71,37 @@ public class Friends extends AppCompatActivity {
                 //Intent intent = new Intent(Friends.this, FriendsAddNew.class);
                 //startActivity(intent);
 
+                //TODO: Move this to FAB
+                bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                if (!bluetoothAdapter.isEnabled()) {
+                    //Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                    //startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+                } else {
+
+                    if (chatService == null) {
+                        setupChat();
+                    }
+                }
+                if (bluetoothAdapter == null) {
+                    Toast.makeText(Friends.this, "Bluetooth is not available", Toast.LENGTH_LONG).show();
+                    finish();
+                    return;
+                }
+                ensureDiscoverable();
+
+                if (chatService != null) {
+                    if (chatService.getState() == ChatService.STATE_NONE) {
+                        chatService.start();
+                    }
+                }
+
                 addNewFriend();
             }
         });
 
         dataModels = new ArrayList<>();
         ListView listView = (ListView) findViewById(R.id.listViewFriends);
-        CustomAdapter adapter;
+        final CustomAdapter adapter;
         adapter= new CustomAdapter(dataModels,getApplicationContext());
         listView.setAdapter(adapter);
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -78,17 +113,82 @@ public class Friends extends AppCompatActivity {
         });
 
         //TODO: Load stuff from server
-        Bitmap bitmap =  BitmapFactory.decodeResource(this.getResources(), R.drawable.obama);
+        //Bitmap bitmap =  BitmapFactory.decodeResource(this.getResources(), R.drawable.obama);
 
-        dataModels.add(new DataModel("President",100,bitmap, 1));
-        bitmap = BitmapManipulation.getCroppedBitmap(bitmap);
-        dataModels.add(new DataModel("Circular",50,bitmap, 2));
-        dataModels.add(new DataModel("",0,null, 3));
-        adapter.notifyDataSetChanged();
+        //dataModels.add(new DataModel("President",100,bitmap, 1));
+        //bitmap = BitmapManipulation.getCroppedBitmap(bitmap);
+        //dataModels.add(new DataModel("Circular",50,bitmap, 2));
+        //dataModels.add(new DataModel("",0,null, 3));
+        //adapter.notifyDataSetChanged();
+        FirebaseAuth auth = FirebaseAuth.getInstance();
+        final FirebaseUser user = auth.getCurrentUser();
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference dbRef = database.getReference("friends/" + user.getUid());
+
+        //search server for current user's friends
+        dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Log.d(TAG,"u valueevent listener: count " + dataSnapshot.getChildrenCount());
+                for(DataSnapshot singleSnapshot : dataSnapshot.getChildren()){
+                    String json = singleSnapshot.toString();
+                    Log.d(TAG,"json: " + json);
+
+                    //TODO: deserialize via class, not like this
+                    final String friendUid = json.substring(json.indexOf("value = ") + 8, json.length()-2);
+                    Log.d(TAG,"friendUid: " + friendUid);
+
+                    //search server for friend's account
+                    FirebaseDatabase database = FirebaseDatabase.getInstance();
+                    database.getReference("users").child(friendUid).addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            final User user = dataSnapshot.getValue(User.class);
+                            if(user!=null){
+                                File localFileProfileImage = null;
+                                StorageReference storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + friendUid + ".jpg");
+                                final long MEMORY = 10 * 1024 * 1024;
+
+                                //first download friend's photo
+                                storage.getBytes(MEMORY).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+                                    @Override
+                                    public void onSuccess(byte[] bytes) {
+                                        Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                                        bitmap = BitmapManipulation.getCroppedBitmap(bitmap);
+                                        dataModels.add(new DataModel(user.firstName + " " + user.lastName + "\n" + user.uid,0,bitmap,5));
+                                        adapter.notifyDataSetChanged();
+                                    }
+                                }).addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception exception) {
+                                        //user exists, but doesn't have profile photo
+                                        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.empty_profile_picture);
+                                        dataModels.add(new DataModel(user.firstName + " " + user.lastName + "\n" + user.uid,0,bitmap,5));
+                                        adapter.notifyDataSetChanged();
+                                    }
+                                });
+                            }else{
+                                Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.empty_profile_picture);
+                                dataModels.add(new DataModel("fake user\n" + friendUid,0,bitmap,5));
+                                adapter.notifyDataSetChanged();
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+                            Toast.makeText(Friends.this, databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.e(TAG, "onCancelled", databaseError.toException());
+            }
+        });
     }
 
     private void addNewFriend() {
-
         Runnable r = new Runnable() {
 
             @Override
@@ -393,7 +493,7 @@ public class Friends extends AppCompatActivity {
                 setupChat();
         }
         */
-
+/*
         //TODO: Move this to FAB
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (!bluetoothAdapter.isEnabled()) {
@@ -411,18 +511,20 @@ public class Friends extends AppCompatActivity {
             return;
         }
         ensureDiscoverable();
-
+*/
     }
 
     @Override
     public synchronized void onResume() {
         super.onResume();
         Log.d(TAG, "MainActivity: onResume started");
+        /*
         if (chatService != null) {
             if (chatService.getState() == ChatService.STATE_NONE) {
                 chatService.start();
             }
         }
+        */
     }
 
     @Override

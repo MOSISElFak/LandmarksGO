@@ -7,4 +7,16 @@
         android:orderInCategory="100"
         android:title="@string/action_settings"
         app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_sendfriendrequest"
+        android:orderInCategory="100"
+        android:title="Temp: send friend request"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_getfriends"
+        android:orderInCategory="100"
+        android:title="Temp: get friends"
+        app:showAsAction="never" />
 </menu>
