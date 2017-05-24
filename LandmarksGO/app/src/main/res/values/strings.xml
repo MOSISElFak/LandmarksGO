@@ -1,4 +1,4 @@
-<resources  xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="app_name">LandmarksGO</string>
 
     <!-- MAIN Activity -->
@@ -108,5 +108,6 @@
     <string name="insecure_connect">Connect a device - Insecure</string>
     <string name="discoverable">Make discoverable</string>
     <string name="title_activity_devicelist">Device List</string>
+    <string name="title_player_info">Player info</string>
 
 </resources>

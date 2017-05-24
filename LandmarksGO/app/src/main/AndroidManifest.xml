@@ -25,17 +25,26 @@
         <activity android:name=".authentication.SignupActivity" />
         <activity android:name=".authentication.LoginActivity" />
         <activity android:name=".authentication.ResetPasswordActivity" />
-        <activity android:name=".SettingsActivity" android:label="@string/title_activity_settings"/>
-        <activity android:name=".landmark.AddLandmark" android:label="@string/title_activity_addlandmark"/>
-        <activity android:name=".highscore.HighScore" android:label="@string/title_activity_highscore"/>
-        <activity android:name=".friends.Friends" android:label="@string/title_activity_friends"/>
-        <activity android:name=".FriendsAddNew" android:label="@string/title_activity_friendsaddnew"/>
+        <activity
+            android:name=".SettingsActivity"
+            android:label="@string/title_activity_settings" />
+        <activity
+            android:name=".landmark.AddLandmark"
+            android:label="@string/title_activity_addlandmark" />
+        <activity
+            android:name=".highscore.HighScore"
+            android:label="@string/title_activity_highscore" />
+        <activity
+            android:name=".friends.Friends"
+            android:label="@string/title_activity_friends" />
+        <activity
+            android:name=".FriendsAddNew"
+            android:label="@string/title_activity_friendsaddnew" />
         <activity
             android:name=".bluetooth.DeviceListActivity"
             android:label="@string/select_device"
             android:screenOrientation="portrait"
             android:theme="@android:style/Theme.DeviceDefault.Light.Dialog" />
-
         <activity
             android:name=".MainActivity"
             android:label="@string/title_activity_main"
@@ -58,6 +67,12 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
 
+        <activity
+            android:name=".PlayerInfo"
+            android:label="@string/title_player_info"
+            android:theme="@android:style/Theme.DeviceDefault.Light.Dialog"
+            android:screenOrientation="portrait">
+        </activity>
     </application>
 
 </manifest>

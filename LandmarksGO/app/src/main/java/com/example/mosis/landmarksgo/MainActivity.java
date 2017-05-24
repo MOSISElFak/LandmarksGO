@@ -53,6 +53,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FileDownloadTask;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -76,7 +77,8 @@ public class MainActivity extends AppCompatActivity
 
     private GoogleMap mMap;
     private HashMap<String, Marker> mapMarkersLandmarks = new HashMap<String, Marker>();
-    private HashMap<String, Marker> mapMarkersUsers = new HashMap<String, Marker>();
+    private HashMap<String, Marker> mapUseridMarker = new HashMap<String, Marker>();
+    private HashMap<Marker, User> mapMarkerUser = new HashMap<Marker, User>();
 
     private int spinnerSelectedSearchOption;
     static File localFileProfileImage = null;
@@ -89,6 +91,9 @@ public class MainActivity extends AppCompatActivity
     private static Bitmap profilePhotoBitmap=null;
     private static View headerView;
     private static ImageView profilePicture;
+
+    private static boolean settingsShowPlayers;
+    private static boolean settingsShowFriends;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -148,7 +153,27 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "onResume");
         if(user!=null){
             customizeUI();
+            readSettingsFromServer();
         }
+        //if(mMap!=null)
+            //mMap.clear(); //TODO: should this be here?
+    }
+
+    private void readSettingsFromServer() {
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        database.getReference("users").child(user.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                User u = dataSnapshot.getValue(User.class);
+                settingsShowFriends = u.showfriends;
+                settingsShowPlayers = u.showplayers;
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Toast.makeText(MainActivity.this, databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
@@ -399,10 +424,18 @@ public class MainActivity extends AppCompatActivity
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(Marker marker) {
-                Toast.makeText(getApplicationContext(), marker.getTitle(), Toast.LENGTH_SHORT).show();
+                //Toast.makeText(getApplicationContext(), marker.getTitle(), Toast.LENGTH_SHORT).show();
+                User user = null;
+                user = mapMarkerUser.get(marker);
+                if(user!=null){
+                    Intent intent = new Intent(MainActivity.this, PlayerInfo.class);
+                    intent.putExtra("uid",user.uid);
+                    intent.putExtra("firstname",user.firstName);
+                    intent.putExtra("lastname",user.lastName);
+                    startActivity(intent);
+                }
 
                 return false;
-
             }
         });
 
@@ -481,7 +514,7 @@ public class MainActivity extends AppCompatActivity
                 //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
                 Landmark landmark = dataSnapshot.getValue(Landmark.class);
                 Log.d(TAG, "onChildAdded:" + landmark.title);
-                Marker marker = addMarkers(landmark.lat, landmark.lon, landmark.title, landmark.desc, null, false, MARKER_LANDMARK);
+                Marker marker = addMarkers(landmark.lat, landmark.lon, landmark.title, "", null, false, MARKER_LANDMARK);
 
                 //Add to searchable HashMap
                 mapMarkersLandmarks.put(landmark.title, marker);
@@ -521,12 +554,15 @@ public class MainActivity extends AppCompatActivity
         ChildEventListener childEventListener = new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
-                //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
-                final User user = dataSnapshot.getValue(User.class);
-                Log.d(TAG, "onChildAdded:" + user.firstName + " uid:" + user.uid);
+                if(settingsShowPlayers){
+                    //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
+                    final User user = dataSnapshot.getValue(User.class);
+                    Log.d(TAG, "onChildAdded:" + user.firstName + " uid:" + user.uid);
 
-                Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, user.uid, null, false, MARKER_USER);
-                mapMarkersUsers.put(user.uid, marker);
+                    Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, "", null, false, MARKER_USER);
+                    mapUseridMarker.put(user.uid, marker);
+                    mapMarkerUser.put(marker, user);
+                }
         }
 
             @Override
@@ -536,7 +572,7 @@ public class MainActivity extends AppCompatActivity
                 //Log.d(TAG, "onChildChanged:" + user.firstName + " uid:" + user.uid);
 
                 Marker mMarker;
-                mMarker = mapMarkersUsers.get(user.uid);
+                mMarker = mapUseridMarker.get(user.uid);
 
                 if(mMarker!=null) {
                     Log.d(TAG,"Brisem marker");
@@ -544,8 +580,10 @@ public class MainActivity extends AppCompatActivity
                     Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, null, false, MARKER_USER);
 
                     //Add to searchable HashMap
-                    mapMarkersUsers.remove(user.uid);
-                    mapMarkersUsers.put(user.uid, marker);
+                    mapUseridMarker.remove(user.uid);
+                    mapUseridMarker.put(user.uid, marker);
+
+                    mapMarkerUser.put(marker, user);    //TODO: remove previous marker
                 }else{
                     Log.d(TAG,"Ne brisem marker");
                 }
@@ -572,22 +610,23 @@ public class MainActivity extends AppCompatActivity
 
     private Marker addMarkers(double lat, double lng, String title, String snippet, Bitmap icon, boolean moveCamera, int type){
         Marker marker = null;
+
+        MarkerOptions mo = new MarkerOptions();
+        mo.position(new LatLng(lat, lng));
+        mo.title(title);
+        if(snippet!=null && snippet!=""){
+            mo.snippet(snippet);
+        }
         if(type==MARKER_LANDMARK){
-            marker = mMap.addMarker(new MarkerOptions()
-                    .position(new LatLng(lat, lng))
-                    .title(title)
-                    .snippet(snippet)
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+            mo.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
+        };
+        if(type==MARKER_USER) {
+            //.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+            //.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(icon, MainActivity.this)))); //of course, this takes too much time to process
+            mo.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(R.drawable.person, MainActivity.this)));
         }
-        if(type==MARKER_USER){
-            marker = mMap.addMarker(new MarkerOptions()
-                    .position(new LatLng(lat, lng))
-                    .title(title)
-                    .snippet(snippet)
-                    //.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
-                    //.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(icon, MainActivity.this)))); //of course, this takes too much time to process
-                    .icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(R.drawable.person, MainActivity.this)))); //of course, this takes too much time to process
-        }
+
+        marker = mMap.addMarker(mo);
 
         if(moveCamera){
             mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(lat, lng)));
