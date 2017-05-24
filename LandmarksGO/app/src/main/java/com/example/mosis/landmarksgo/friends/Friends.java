@@ -57,6 +57,7 @@ import java.util.ArrayList;
 public class Friends extends AppCompatActivity {
     public static final String FRIEND_REQUEST_CODE = "MONUMENTS_GO_FRIEND_REQUEST_";
     private static ArrayList<DataModel> dataModels;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -99,6 +100,11 @@ public class Friends extends AppCompatActivity {
             }
         });
 
+        FirebaseAuth auth = FirebaseAuth.getInstance();
+        final FirebaseUser user = auth.getCurrentUser();
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference dbRef = database.getReference("friends/" + user.getUid());
+
         dataModels = new ArrayList<>();
         ListView listView = (ListView) findViewById(R.id.listViewFriends);
         final CustomAdapter adapter;
@@ -106,9 +112,33 @@ public class Friends extends AppCompatActivity {
         listView.setAdapter(adapter);
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                DataModel dataModel= dataModels.get(position);
-                Toast.makeText(Friends.this,"" + dataModel.getName(),Toast.LENGTH_SHORT).show();
+            public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
+                final DataModel dataModel= dataModels.get(position);
+                //Toast.makeText(Friends.this,"" + dataModel.getName(),Toast.LENGTH_SHORT).show();
+                new AlertDialog.Builder(Friends.this)
+                        .setTitle("Removing friendship")
+                        .setMessage("Are you sure you want to remove " + dataModel.getName())
+                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                FirebaseDatabase database = FirebaseDatabase.getInstance();
+                                final DatabaseReference dbRef = database.getReference("friends/" + user.getUid());
+
+                                //dbRef.child(String.valueOf(position)).setValue("null");
+                                dbRef.child(String.valueOf(dataModel.getFriendNumberOnServer())).removeValue();
+                                dataModels.remove(position);
+                                adapter.notifyDataSetChanged();
+
+                                Snackbar.make(findViewById(android.R.id.content), "Removed " + dataModel.getName(), Snackbar.LENGTH_LONG).show();
+                            }
+                        })
+                        .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                // do nothing
+                            }
+                        })
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .show();
+
             }
         });
 
@@ -120,10 +150,6 @@ public class Friends extends AppCompatActivity {
         //dataModels.add(new DataModel("Circular",50,bitmap, 2));
         //dataModels.add(new DataModel("",0,null, 3));
         //adapter.notifyDataSetChanged();
-        FirebaseAuth auth = FirebaseAuth.getInstance();
-        final FirebaseUser user = auth.getCurrentUser();
-        FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference dbRef = database.getReference("friends/" + user.getUid());
 
         //search server for current user's friends
         dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -137,6 +163,9 @@ public class Friends extends AppCompatActivity {
                     //TODO: deserialize via class, not like this
                     final String friendUid = json.substring(json.indexOf("value = ") + 8, json.length()-2);
                     Log.d(TAG,"friendUid: " + friendUid);
+
+                    final String friendNumber = json.substring(json.indexOf("key = ") + 6, json.indexOf(","));
+                    Log.d(TAG,"friendNumber: " + friendNumber);
 
                     //search server for friend's account
                     FirebaseDatabase database = FirebaseDatabase.getInstance();
@@ -155,7 +184,7 @@ public class Friends extends AppCompatActivity {
                                     public void onSuccess(byte[] bytes) {
                                         Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
                                         bitmap = BitmapManipulation.getCroppedBitmap(bitmap);
-                                        dataModels.add(new DataModel(user.firstName + " " + user.lastName + "\n" + user.uid,0,bitmap,5));
+                                        dataModels.add(new DataModel(user.firstName + " " + user.lastName + "\n" + user.uid,0,bitmap,5,Integer.parseInt(friendNumber)));
                                         adapter.notifyDataSetChanged();
                                     }
                                 }).addOnFailureListener(new OnFailureListener() {
@@ -163,13 +192,13 @@ public class Friends extends AppCompatActivity {
                                     public void onFailure(@NonNull Exception exception) {
                                         //user exists, but doesn't have profile photo
                                         Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.empty_profile_picture);
-                                        dataModels.add(new DataModel(user.firstName + " " + user.lastName + "\n" + user.uid,0,bitmap,5));
+                                        dataModels.add(new DataModel(user.firstName + " " + user.lastName + "\n" + user.uid,0,bitmap,5,Integer.parseInt(friendNumber)));
                                         adapter.notifyDataSetChanged();
                                     }
                                 });
                             }else{
                                 Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.empty_profile_picture);
-                                dataModels.add(new DataModel("fake user\n" + friendUid,0,bitmap,5));
+                                dataModels.add(new DataModel("fake user\n" + friendUid,0,bitmap,5,Integer.parseInt(friendNumber)));
                                 adapter.notifyDataSetChanged();
                             }
                         }

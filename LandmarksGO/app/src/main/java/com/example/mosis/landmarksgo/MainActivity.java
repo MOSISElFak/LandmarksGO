@@ -272,7 +272,7 @@ public class MainActivity extends AppCompatActivity
 
     private List<String> getRandomFriendship(){
         Random ran = new Random();
-        int x = ran.nextInt(6) + 1;
+        int x = ran.nextInt(15) + 5;
         List<String> friendsList = new ArrayList<>();
         for(int i=0;i<x;i++){
             friendsList.add(getRandomFirebaseUid());

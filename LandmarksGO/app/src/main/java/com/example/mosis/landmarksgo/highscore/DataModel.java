@@ -12,12 +12,14 @@ public class DataModel {
     int points;
     Bitmap photo;
     int number;
+    int friendNumberOnServer;
 
-    public DataModel(String name, int points, Bitmap photo, int number) {
+    public DataModel(String name, int points, Bitmap photo, int number, int friendNumberOnServer) {
         this.name=name;
         this.points= points;
         this.photo= photo;
         this.number= number;
+        this.friendNumberOnServer = friendNumberOnServer;
     }
 
     public String getName() {
@@ -33,4 +35,8 @@ public class DataModel {
     }
 
     public int getNumber() { return  number;}
+
+    public int getFriendNumberOnServer() {
+        return friendNumberOnServer;
+    }
 }

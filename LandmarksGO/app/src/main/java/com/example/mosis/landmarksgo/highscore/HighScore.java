@@ -87,7 +87,7 @@ public class HighScore extends AppCompatActivity {
 
         //>for better UX, show an empty list because loading from Server can take a few seconds, or there is no Internet connection
         for(int i=0;i<howManyTopPlayers;i++){
-            dataModels.add(new DataModel("",0,null, ++i));
+            dataModels.add(new DataModel("",0,null, ++i,0));
         }
         emptyList=true;
         adapter.notifyDataSetChanged();
@@ -106,7 +106,7 @@ public class HighScore extends AppCompatActivity {
                     progressBar.setVisibility(View.INVISIBLE);
                 }
                 for (DataSnapshot postSnapshot: dataSnapshot.getChildren()) {
-                        dataModels.add(new DataModel(postSnapshot.child("name").getValue(String.class),postSnapshot.child("points").getValue(Integer.class),null, howManyTopPlayers-(number++)));
+                        dataModels.add(new DataModel(postSnapshot.child("name").getValue(String.class),postSnapshot.child("points").getValue(Integer.class),null, howManyTopPlayers-(number++),0));
                 }
 
                 //Firebase returns players in ascending order, we need to order by points in descending order
