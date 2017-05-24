@@ -84,7 +84,7 @@ public class CustomAdapter extends ArrayAdapter<DataModel> implements View.OnCli
         viewHolder.tvName.setText(dataModel.getName());
         viewHolder.tvPoints.setText(String.valueOf(dataModel.getPoints()));
         viewHolder.imPhoto.setImageBitmap(dataModel.getPhoto());
-        viewHolder.tvNumber.setText(String.valueOf(dataModel.getNumber()));
+        //viewHolder.tvNumber.setText(String.valueOf(dataModel.getNumber()));
 
         // Return the completed view to render on screen
         return convertView;
