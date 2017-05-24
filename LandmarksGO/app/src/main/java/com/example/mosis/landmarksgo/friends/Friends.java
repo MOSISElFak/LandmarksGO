@@ -58,7 +58,6 @@ import java.util.List;
 public class Friends extends AppCompatActivity {
     public static final String FRIEND_REQUEST_CODE = "MONUMENTS_GO_FRIEND_REQUEST_";
     private static ArrayList<DataModel> dataModels;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -183,11 +182,31 @@ public class Friends extends AppCompatActivity {
                                 //first download friend's photo
                                 storage.getBytes(MEMORY).addOnSuccessListener(new OnSuccessListener<byte[]>() {
                                     @Override
-                                    public void onSuccess(byte[] bytes) {
-                                        Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-                                        bitmap = BitmapManipulation.getCroppedBitmap(bitmap);
-                                        dataModels.add(new DataModel(user.firstName + " " + user.lastName + "\n" + user.uid,0,bitmap,5,Integer.parseInt(friendNumber)));
-                                        adapter.notifyDataSetChanged();
+                                    public void onSuccess(final byte[] bytes) {
+
+                                        //get points for each friend
+                                        final FirebaseDatabase database = FirebaseDatabase.getInstance();
+                                        DatabaseReference dbRef = database.getReference("scoreTable/" + friendUid);
+                                        dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                                            @Override
+                                            public void onDataChange(DataSnapshot dataSnapshot) {
+                                                Log.d(TAG, "NASAO dataSnapshot: " + dataSnapshot.toString());
+                                                //TODO: don't deserialize like this
+                                                String snapshot = dataSnapshot.toString();
+                                                String pointsS = snapshot.substring(snapshot.indexOf("points=") + 7, snapshot.length()-3);
+
+                                                Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                                                bitmap = BitmapManipulation.getCroppedBitmap(bitmap);
+
+                                                dataModels.add(new DataModel(user.firstName + " " + user.lastName + "\n" + user.uid,Integer.parseInt(pointsS),bitmap,5,Integer.parseInt(friendNumber)));
+                                                adapter.notifyDataSetChanged();
+                                            }
+                                            @Override
+                                            public void onCancelled(DatabaseError databaseError) {
+                                                Log.e(TAG, "onCancelled", databaseError.toException());
+                                            }
+                                        });
+                                        //< got points
                                     }
                                 }).addOnFailureListener(new OnFailureListener() {
                                     @Override
