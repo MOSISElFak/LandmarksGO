@@ -70,9 +70,13 @@
         <activity
             android:name=".PlayerInfo"
             android:label="@string/title_player_info"
-            android:theme="@android:style/Theme.DeviceDefault.Light.Dialog"
-            android:screenOrientation="portrait">
-        </activity>
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.DeviceDefault.Light.Dialog"></activity>
+
+        <service
+            android:name=".other.BackgroundService"
+            android:enabled="true"
+            android:exported="true"></service>
     </application>
 
 </manifest>

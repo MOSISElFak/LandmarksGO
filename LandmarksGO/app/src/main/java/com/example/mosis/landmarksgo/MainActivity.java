@@ -35,6 +35,7 @@ import com.example.mosis.landmarksgo.friends.Friends;
 import com.example.mosis.landmarksgo.highscore.HighScore;
 import com.example.mosis.landmarksgo.landmark.AddLandmark;
 import com.example.mosis.landmarksgo.landmark.Landmark;
+import com.example.mosis.landmarksgo.other.BackgroundService;
 import com.example.mosis.landmarksgo.other.BitmapManipulation;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -99,6 +100,7 @@ public class MainActivity extends AppCompatActivity
 
     private static boolean settingsShowPlayers;
     private static boolean settingsShowFriends;
+    private static boolean settingsBackgroundService;
 
     private static ArrayList<String> friendList;
     private static boolean pauseWaitingForFriendsList =false;
@@ -205,6 +207,15 @@ public class MainActivity extends AppCompatActivity
                 User u = dataSnapshot.getValue(User.class);
                 settingsShowFriends = u.showfriends;
                 settingsShowPlayers = u.showplayers;
+                settingsBackgroundService = u.workback;
+
+                Intent service = new Intent(MainActivity.this, BackgroundService.class);
+                if(settingsBackgroundService){
+                    startService(service);
+                }else{
+                    Toast.makeText(MainActivity.this, "Stopping background service", Toast.LENGTH_SHORT).show();
+                    stopService(service);
+                }
             }
 
             @Override
