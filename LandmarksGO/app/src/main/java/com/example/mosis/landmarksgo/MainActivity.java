@@ -53,6 +53,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FileDownloadTask;
 import com.google.firebase.storage.FirebaseStorage;
@@ -73,7 +74,7 @@ public class MainActivity extends AppCompatActivity
 
     private FirebaseAuth.AuthStateListener authListener;
     private FirebaseAuth auth;
-    private FirebaseUser user;
+    private FirebaseUser loggedUser;
     private StorageReference storage;
 
     private static final String TAG = "LandmarksGO";
@@ -98,18 +99,21 @@ public class MainActivity extends AppCompatActivity
 
     private static boolean settingsShowPlayers;
     private static boolean settingsShowFriends;
+
+    private static ArrayList<String> friendList;
+    private static boolean pauseWaitingForFriendsList =false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         auth = FirebaseAuth.getInstance();
-        user = auth.getCurrentUser();
+        loggedUser = auth.getCurrentUser();
 
         authListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                user = firebaseAuth.getCurrentUser();
-                if (user == null) {
+                loggedUser = firebaseAuth.getCurrentUser();
+                if (loggedUser == null) {
                     // user auth state is changed - user is null
                     // launch login activity
                     startActivity(new Intent(MainActivity.this, LoginActivity.class));
@@ -118,7 +122,7 @@ public class MainActivity extends AppCompatActivity
             }
         };
 
-        if(user!=null){
+        if(loggedUser!=null){
             setUpLayout();
 
             //Google Maps
@@ -127,6 +131,7 @@ public class MainActivity extends AppCompatActivity
 
             //storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + user.getUid() + ".jpg");
         }
+        friendList = new ArrayList<String>();
     }
 
     @Override
@@ -155,7 +160,7 @@ public class MainActivity extends AppCompatActivity
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "onResume");
-        if(user!=null){
+        if(loggedUser!=null){
             customizeUI();
             readSettingsFromServer();
         }
@@ -163,9 +168,38 @@ public class MainActivity extends AppCompatActivity
             //mMap.clear(); //TODO: should this be here?
     }
 
+    private void getFriendsUidFromServer() {    //TODO: This works only when user exits and opens the app. Doesn't work the there is a change to friends in Friends activity.
+        Log.d(TAG,"getFriendsUidFromServer started");
+        pauseWaitingForFriendsList =true;
+        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("friends/" + loggedUser.getUid());
+        dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Log.d(TAG,"getFriendsUidFromServer onDataChange started");
+                for (DataSnapshot singleSnapshot : dataSnapshot.getChildren()) {
+                    String json = singleSnapshot.toString();
+
+                    //TODO: deserialize via class, not like this
+                    final String friendUid = json.substring(json.indexOf("value = ") + 8, json.length() - 2);
+                    Log.d(TAG, "getFriendsUidFromServer friendUid: " + friendUid);
+                    friendList.add(friendUid);
+                }
+                Log.d(TAG,"getFriendsUidFromServer onDataChange ended");
+                Log.d(TAG,"getFriendsUidFromServer onDataChange friendList:" + friendList);
+                pauseWaitingForFriendsList =false;
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }});
+        Log.d(TAG,"getFriendsUidFromServer friendList:" + friendList);
+        Log.d(TAG,"getFriendsUidFromServer ended");
+    }
+
     private void readSettingsFromServer() {
         FirebaseDatabase database = FirebaseDatabase.getInstance();
-        database.getReference("users").child(user.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
+        database.getReference("users").child(loggedUser.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 User u = dataSnapshot.getValue(User.class);
@@ -228,12 +262,12 @@ public class MainActivity extends AppCompatActivity
             //Query phoneQuery = dbRef.orderByChild(myUid).equalTo(myUid);
             //Query phoneQuery = dbRef.equalTo(myUid);
 
-            pushRandomFriendships(user.getUid());
+            pushRandomFriendships(loggedUser.getUid());
             return true;
         }
 
         if (id==R.id.action_getfriends){
-            Log.d(TAG,"My myUid:" + user.getUid());
+            Log.d(TAG,"My myUid:" + loggedUser.getUid());
             getFriends();
         }
         return super.onOptionsItemSelected(item);
@@ -241,7 +275,7 @@ public class MainActivity extends AppCompatActivity
 
     private void getFriends() {
         FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference dbRef = database.getReference("friends/" + user.getUid());
+        DatabaseReference dbRef = database.getReference("friends/" + loggedUser.getUid());
         dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -352,14 +386,14 @@ public class MainActivity extends AppCompatActivity
 
     private void customizeUI() {
         Log.d(TAG, "MainActivity:changeUI:photoUrl started");
-        user = auth.getCurrentUser();
-        if(user!=null) {
+        loggedUser = auth.getCurrentUser();
+        if(loggedUser!=null) {
             Log.d(TAG, "MainActivity:changeUI: user!=null");
 
             headerView = navigationView.getHeaderView(0);
 
-            String displayName = user.getDisplayName();
-            String email = user.getEmail();
+            String displayName = loggedUser.getDisplayName();
+            String email = loggedUser.getEmail();
 
             Log.d(TAG, "MainActivity:changeUI: displayName=" + displayName);
             final TextView profileName = (TextView) headerView.findViewById(R.id.textViewProfileName);
@@ -402,7 +436,7 @@ public class MainActivity extends AppCompatActivity
             e.printStackTrace();
         }
 
-        storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + user.getUid() + ".jpg");
+        storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + loggedUser.getUid() + ".jpg");
         storage.getFile(localFileProfileImage).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
             @Override
             public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
@@ -550,12 +584,12 @@ public class MainActivity extends AppCompatActivity
                     //addMarkers(arg0.getLatitude(),arg0.getLongitude(),"I","", smallMarker, false, MARKER_USER);
 
                     DatabaseReference users = FirebaseDatabase.getInstance().getReference("users");
-                    users.child(user.getUid()).child("lat").setValue(arg0.getLatitude());
-                    users.child(user.getUid()).child("lon").setValue(arg0.getLongitude());
+                    users.child(loggedUser.getUid()).child("lat").setValue(arg0.getLatitude());
+                    users.child(loggedUser.getUid()).child("lon").setValue(arg0.getLongitude());
                 }
             });
         }
-
+        getFriendsUidFromServer();
         Runnable r = new Runnable() {
             @Override
             public void run() {
@@ -568,6 +602,16 @@ public class MainActivity extends AppCompatActivity
         Runnable r2 = new Runnable() {
             @Override
             public void run() {
+                while(pauseWaitingForFriendsList){
+                    synchronized (this) {
+                        try {
+                            wait(100);
+                            Log.d(TAG,"Cekam 100ms");
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
                 loadAllPlayersFromServer();
             }
         };
@@ -586,7 +630,7 @@ public class MainActivity extends AppCompatActivity
                 //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
                 Landmark landmark = dataSnapshot.getValue(Landmark.class);
                 Log.d(TAG, "onChildAdded:" + landmark.title);
-                Marker marker = addMarkers(landmark.lat, landmark.lon, landmark.title, "", null, false, MARKER_LANDMARK);
+                Marker marker = addMarkers(landmark.lat, landmark.lon, landmark.title, "", null, false, "");
 
                 //Add to searchable HashMap
                 mapMarkersLandmarks.put(landmark.title, marker);
@@ -619,6 +663,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void loadAllPlayersFromServer() {
+        Log.d(TAG,"loadAllPlayersFromServer started");
         FirebaseDatabase database = FirebaseDatabase.getInstance();
         DatabaseReference myRef = database.getReference("users");
 
@@ -627,11 +672,12 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
                 if(settingsShowPlayers){
+                    Log.d(TAG,"TIMESTAMP.values: " + ServerValue.TIMESTAMP.values());
                     //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
                     final User user = dataSnapshot.getValue(User.class);
                     Log.d(TAG, "onChildAdded:" + user.firstName + " uid:" + user.uid);
 
-                    Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, "", null, false, MARKER_USER);
+                    Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, "", null, false, user.uid);
                     mapUseridMarker.put(user.uid, marker);
                     mapMarkerUser.put(marker, user);
                 }
@@ -649,7 +695,7 @@ public class MainActivity extends AppCompatActivity
                 if(mMarker!=null) {
                     Log.d(TAG,"Brisem marker");
                     mMarker.remove();
-                    Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, null, false, MARKER_USER);
+                    Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, null, false, user.uid);
 
                     //Add to searchable HashMap
                     mapUseridMarker.remove(user.uid);
@@ -680,7 +726,8 @@ public class MainActivity extends AppCompatActivity
         myRef.addChildEventListener(childEventListener);
     }
 
-    private Marker addMarkers(double lat, double lng, String title, String snippet, Bitmap icon, boolean moveCamera, int type){
+    private Marker addMarkers(double lat, double lng, String title, String snippet, Bitmap icon, boolean moveCamera, String uid){
+        Log.d(TAG,"addMarkers uid:" + uid);
         Marker marker = null;
 
         MarkerOptions mo = new MarkerOptions();
@@ -689,13 +736,25 @@ public class MainActivity extends AppCompatActivity
         if(snippet!=null && snippet!=""){
             mo.snippet(snippet);
         }
-        if(type==MARKER_LANDMARK){
+        if(uid==null || uid==""){
             mo.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
-        };
-        if(type==MARKER_USER) {
+        }else{
             //.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
             //.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(icon, MainActivity.this)))); //of course, this takes too much time to process
-            mo.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(R.drawable.person, MainActivity.this)));
+            if(uid.equals(loggedUser.getUid())){
+                mo.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(R.drawable.person_i, MainActivity.this)));
+                Log.d(TAG,"addMarkers adding I");
+            }else{
+                //if friend
+                //if stranger
+                Log.d(TAG,"addMarkers adding friend");
+                if(friendList.contains(uid)){
+                    mo.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(R.drawable.person_friend, MainActivity.this)));
+                }else{
+                    mo.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(R.drawable.person, MainActivity.this)));
+
+                }
+            }
         }
 
         marker = mMap.addMarker(mo);
