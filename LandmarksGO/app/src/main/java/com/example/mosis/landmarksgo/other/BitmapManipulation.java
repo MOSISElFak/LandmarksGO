@@ -23,9 +23,23 @@ import com.example.mosis.landmarksgo.R;
 public class BitmapManipulation {
 
     public static Bitmap getCroppedBitmap(Bitmap bitmap) {
-        int smallerSide = bitmap.getHeight();
-        if(bitmap.getWidth()<bitmap.getHeight()){
-            smallerSide = bitmap.getWidth();
+        //scale bitmap so it takes less memory space
+        double ratio=(double)bitmap.getWidth()/(double)bitmap.getHeight();
+        int newHeight, newWidth;
+        if(bitmap.getHeight()>bitmap.getWidth()){
+            newHeight=256;
+            newWidth=(int)(newHeight/ratio);
+        }else{
+            newWidth=256;
+            newHeight=(int)(newWidth*ratio);
+        }
+
+        bitmap = Bitmap.createScaledBitmap(bitmap, newHeight, newWidth, false);
+
+        //creating new square bitmap
+        int smallerSide = newHeight;
+        if(newWidth<newHeight){
+            smallerSide = newWidth;
         }
 
         Bitmap output = Bitmap.createBitmap(smallerSide, smallerSide, Bitmap.Config.ARGB_8888);
