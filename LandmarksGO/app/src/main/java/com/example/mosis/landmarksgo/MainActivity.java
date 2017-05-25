@@ -101,9 +101,11 @@ public class MainActivity extends AppCompatActivity
     private static boolean settingsShowPlayers;
     private static boolean settingsShowFriends;
     private static boolean settingsBackgroundService;
+    private static int settingsGpsRefreshTime;
 
     private static ArrayList<String> friendList;
     private static boolean pauseWaitingForFriendsList =false;
+    private Intent backgroundService;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -131,7 +133,7 @@ public class MainActivity extends AppCompatActivity
             SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(map);
             mapFragment.getMapAsync(this);
 
-            //storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + user.getUid() + ".jpg");
+            backgroundService = new Intent(MainActivity.this, BackgroundService.class);
         }
         friendList = new ArrayList<String>();
     }
@@ -150,6 +152,7 @@ public class MainActivity extends AppCompatActivity
         if (authListener != null) {
             auth.removeAuthStateListener(authListener);
         }
+        //stopService(backgroundService);
     }
 
     @Override
@@ -208,13 +211,26 @@ public class MainActivity extends AppCompatActivity
                 settingsShowFriends = u.showfriends;
                 settingsShowPlayers = u.showplayers;
                 settingsBackgroundService = u.workback;
+                settingsGpsRefreshTime = u.gpsrefresh;
 
-                Intent service = new Intent(MainActivity.this, BackgroundService.class);
                 if(settingsBackgroundService){
-                    startService(service);
+                    backgroundService.putExtra("settingsGpsRefreshTime", settingsGpsRefreshTime);
+                    backgroundService.putExtra("loggedUserUid", loggedUser.getUid());
+
+                    startService(backgroundService);
+                    /*
+                    Runnable r = new Runnable() {
+                        @Override
+                        public void run() {
+                            startService(backgroundService);
+                        }
+                    };
+                    Thread backgroundServiceThread = new Thread(r);
+                    backgroundServiceThread.start();
+                    */
                 }else{
                     Toast.makeText(MainActivity.this, "Stopping background service", Toast.LENGTH_SHORT).show();
-                    stopService(service);
+                    stopService(backgroundService);
                 }
             }
 
@@ -229,6 +245,7 @@ public class MainActivity extends AppCompatActivity
     protected void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy");
+        //stopService(backgroundService);
     }
 
     @Override
@@ -351,10 +368,10 @@ public class MainActivity extends AppCompatActivity
             Intent intent = new Intent(MainActivity.this,SettingsActivity.class);
             startActivity(intent);
         } else if (id == R.id.nav_exit){
+            stopService(backgroundService);
             moveTaskToBack(true);
             android.os.Process.killProcess(android.os.Process.myPid());
             System.exit(1);
-            //TODO: Stop background service .
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -594,9 +611,10 @@ public class MainActivity extends AppCompatActivity
 
                     //addMarkers(arg0.getLatitude(),arg0.getLongitude(),"I","", smallMarker, false, MARKER_USER);
 
-                    DatabaseReference users = FirebaseDatabase.getInstance().getReference("users");
-                    users.child(loggedUser.getUid()).child("lat").setValue(arg0.getLatitude());
-                    users.child(loggedUser.getUid()).child("lon").setValue(arg0.getLongitude());
+                    //>This was moved to BackgroundService
+                    //DatabaseReference users = FirebaseDatabase.getInstance().getReference("users");
+                    //users.child(loggedUser.getUid()).child("lat").setValue(arg0.getLatitude());
+                    //users.child(loggedUser.getUid()).child("lon").setValue(arg0.getLongitude());
                 }
             });
         }
