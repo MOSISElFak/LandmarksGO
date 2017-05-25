@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="10dp"
     tools:context="com.example.mosis.landmarksgo.SettingsActivity">
+
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:padding="10dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -23,7 +23,8 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_horizontal"
                 android:text="Map settings"
-                android:textColor="@color/colorPrimary" />
+                android:textColor="@color/colorPrimary"
+                android:textSize="18sp" />
 
             <CheckBox
                 android:id="@+id/workback"
@@ -46,6 +47,7 @@
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_margin="5dp"
                 android:orientation="horizontal">
 
                 <TextView
@@ -67,7 +69,6 @@
                 style="?android:textAppearanceSmall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
                 android:layout_weight="1"
                 android:background="@color/colorPrimaryDark"
                 android:text="@string/save"
@@ -78,9 +79,11 @@
                 android:id="@+id/textView3"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
                 android:gravity="center_horizontal"
                 android:text="Account settings"
-                android:textColor="@color/colorPrimary" />
+                android:textColor="@color/colorPrimary"
+                android:textSize="18sp" />
 
             <Button
                 android:id="@+id/change_email_button"
@@ -90,14 +93,7 @@
                 android:layout_marginTop="16dp"
                 android:text="@string/change_email"
                 android:textStyle="bold" />
-            <EditText
-                android:id="@+id/old_email"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/hint_email"
-                android:inputType="textEmailAddress"
-                android:maxLines="1"
-                android:singleLine="true" />
+
             <EditText
                 android:id="@+id/new_email"
                 android:layout_width="match_parent"
@@ -126,17 +122,7 @@
                 android:layout_marginTop="16dp"
                 android:text="@string/change_password"
                 android:textStyle="bold" />
-            <EditText
-                android:id="@+id/password"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:focusableInTouchMode="true"
-                android:hint="@string/hint_password"
-                android:imeActionId="@+id/login"
-                android:imeOptions="actionUnspecified"
-                android:inputType="textPassword"
-                android:maxLines="1"
-                android:singleLine="true" />
+
             <EditText
                 android:id="@+id/newPassword"
                 android:layout_width="match_parent"
@@ -148,6 +134,7 @@
                 android:inputType="textPassword"
                 android:maxLines="1"
                 android:singleLine="true" />
+
             <Button
                 android:id="@+id/changePass"
                 style="?android:textAppearanceSmall"
@@ -166,7 +153,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/change_photo"
-                android:textStyle="bold"/>
+                android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/upload_photo_layout"
@@ -210,17 +197,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
+                android:background="@color/btn_logut_bg"
                 android:text="@string/remove_user"
-                android:textStyle="bold" />
-            <Button
-                android:id="@+id/remove"
-                style="?android:textAppearanceSmall"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@color/colorPrimaryDark"
-                android:text="@string/btn_remove"
-                android:textColor="@android:color/white"
                 android:textStyle="bold" />
 
             <Button
@@ -243,15 +221,17 @@
                 android:background="@color/colorPrimaryDark"
                 android:text="@string/about"
                 android:textColor="@android:color/white"
-                android:textStyle="bold"/>
+                android:textStyle="bold" />
 
-            <ProgressBar
-                android:id="@+id/progressBar"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:visibility="gone" />
 
         </LinearLayout>
     </ScrollView>
 
-</LinearLayout>
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_centerInParent="true"
+        android:visibility="gone" />
+
+</RelativeLayout>

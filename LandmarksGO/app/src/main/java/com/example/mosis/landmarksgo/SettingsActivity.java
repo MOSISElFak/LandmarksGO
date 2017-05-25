@@ -25,6 +25,7 @@ import com.example.mosis.landmarksgo.authentication.LoginActivity;
 import com.example.mosis.landmarksgo.authentication.SignupActivity;
 import com.example.mosis.landmarksgo.authentication.User;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
@@ -42,11 +43,12 @@ import java.io.File;
 public class SettingsActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener{
 
     private Button btnChangeEmail, btnChangePassword, btnRemoveUser, btnAbout, btnSave, btnChangePhoto,
-            changeEmail, changePassword, camera, gallery, remove, signOut;
+            changeEmail, changePassword, camera, gallery, signOut;
     private CheckBox work_check, players_check, friends_check;
-    private EditText oldEmail, newEmail, password, newPassword;
+    private EditText newEmail, newPassword;
     private ProgressBar progressBar;
     private Spinner gpsSpinner;
+    private LinearLayout photoLayout;
     
     private Integer gpsRefresh;
     private Boolean friends_status, players_status, workback_status;
@@ -67,7 +69,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         auth = FirebaseAuth.getInstance();
 
         //get current user
-        user = FirebaseAuth.getInstance().getCurrentUser();
+        user = auth.getCurrentUser();
 
         //get database instance
         database = FirebaseDatabase.getInstance();
@@ -98,12 +100,9 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         changePassword = (Button) findViewById(R.id.changePass);
         camera = (Button) findViewById(R.id.camera);
         gallery = (Button) findViewById(R.id.gallery);
-        remove = (Button) findViewById(R.id.remove);
         signOut = (Button) findViewById(R.id.sign_out);
 
-        oldEmail = (EditText) findViewById(R.id.old_email);
         newEmail = (EditText) findViewById(R.id.new_email);
-        password = (EditText) findViewById(R.id.password);
         newPassword = (EditText) findViewById(R.id.newPassword);
 
         work_check = (CheckBox) findViewById(R.id.workback);
@@ -117,19 +116,15 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         gpsSpinner.setAdapter(adapter);
         gpsSpinner.setOnItemSelectedListener(this);
 
-        oldEmail.setVisibility(View.GONE);
-        newEmail.setVisibility(View.GONE);
-        password.setVisibility(View.GONE);
-        newPassword.setVisibility(View.GONE);
-        changeEmail.setVisibility(View.GONE);
-        changePassword.setVisibility(View.GONE);
-        remove.setVisibility(View.GONE);
+        photoLayout = (LinearLayout) findViewById(R.id.upload_photo_layout);
 
         progressBar = (ProgressBar) findViewById(R.id.progressBar);
 
         if (progressBar != null) {
             progressBar.setVisibility(View.GONE);
         }
+
+        hideAllInputs();
 
         // OVDE CITAM SETTINGS IZ BAZE
         database.getReference("users").child(user.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
@@ -157,10 +152,12 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         btnSave.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
+                progressBar.setVisibility(View.VISIBLE);
                 database.getReference("users").child(user.getUid()).child("workback").setValue(work_check.isChecked());
                 database.getReference("users").child(user.getUid()).child("showplayers").setValue(players_check.isChecked());
                 database.getReference("users").child(user.getUid()).child("showfriends").setValue(friends_check.isChecked());
                 database.getReference("users").child(user.getUid()).child("gpsrefresh").setValue(gpsRefresh);
+                progressBar.setVisibility(View.GONE);
                 Toast.makeText(SettingsActivity.this, "Settings saved", Toast.LENGTH_SHORT).show();
 
                 Snackbar.make(findViewById(android.R.id.content), "Please exit the app in order to apply the settings about showing players or friends", Snackbar.LENGTH_LONG).show();
@@ -170,13 +167,9 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         btnChangeEmail.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                oldEmail.setVisibility(View.GONE);
+                hideAllInputs();
                 newEmail.setVisibility(View.VISIBLE);
-                password.setVisibility(View.GONE);
-                newPassword.setVisibility(View.GONE);
                 changeEmail.setVisibility(View.VISIBLE);
-                changePassword.setVisibility(View.GONE);
-                remove.setVisibility(View.GONE);
             }
         });
 
@@ -209,13 +202,9 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         btnChangePassword.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                oldEmail.setVisibility(View.GONE);
-                newEmail.setVisibility(View.GONE);
-                password.setVisibility(View.GONE);
+                hideAllInputs();
                 newPassword.setVisibility(View.VISIBLE);
-                changeEmail.setVisibility(View.GONE);
                 changePassword.setVisibility(View.VISIBLE);
-                remove.setVisibility(View.GONE);
             }
         });
 
@@ -253,16 +242,13 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         btnChangePhoto.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                LinearLayout layout = (LinearLayout) findViewById(R.id.upload_photo_layout);
-                layout.setVisibility(View.VISIBLE);
+                hideAllInputs();
+                photoLayout.setVisibility(View.VISIBLE);
             }
         });
         camera.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-                /*Intent takePicture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                startActivityForResult(takePicture, 0);*/
-
                 Intent imageIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
 
                 File imagesFolder = new File(Environment.getExternalStorageDirectory(), "WorkingWithPhotosApp");
@@ -272,6 +258,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
                 savedURI = Uri.fromFile(image);
 
                 imageIntent.putExtra(MediaStore.EXTRA_OUTPUT, savedURI);
+
                 startActivityForResult(imageIntent, 0);
             }
         });
@@ -280,6 +267,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
             public void onClick(View v) {
                 Intent pickPhoto = new Intent(Intent.ACTION_PICK,
                         android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+
                 startActivityForResult(pickPhoto , 1);
             }
         });
@@ -287,25 +275,42 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         btnRemoveUser.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                progressBar.setVisibility(View.VISIBLE);
-                if (user != null) {
-                    onAccDelete(user.getUid());
-                    user.delete()
-                            .addOnCompleteListener(new OnCompleteListener<Void>() {
-                                @Override
-                                public void onComplete(@NonNull Task<Void> task) {
-                                    if (task.isSuccessful()) {
-                                        Toast.makeText(SettingsActivity.this, "Your profile is deleted! Create new account now!", Toast.LENGTH_SHORT).show();
-                                        startActivity(new Intent(SettingsActivity.this, SignupActivity.class));
-                                        finish();
-                                        progressBar.setVisibility(View.GONE);
-                                    } else {
-                                        Toast.makeText(SettingsActivity.this, "Failed to delete your account!", Toast.LENGTH_SHORT).show();
-                                        progressBar.setVisibility(View.GONE);
-                                    }
+                DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        switch (which){
+                            case DialogInterface.BUTTON_POSITIVE:
+                                progressBar.setVisibility(View.VISIBLE);
+                                if (user != null) {
+                                    onAccDelete(user.getUid());
+                                    user.delete()
+                                            .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                @Override
+                                                public void onComplete(@NonNull Task<Void> task) {
+                                                    if (task.isSuccessful()) {
+                                                        Toast.makeText(SettingsActivity.this, "Your profile is deleted! Create new account now!", Toast.LENGTH_SHORT).show();
+                                                        startActivity(new Intent(SettingsActivity.this, SignupActivity.class));
+                                                        finish();
+                                                        progressBar.setVisibility(View.GONE);
+                                                    } else {
+                                                        Toast.makeText(SettingsActivity.this, "Failed to delete your account!", Toast.LENGTH_SHORT).show();
+                                                        progressBar.setVisibility(View.GONE);
+                                                    }
+                                                }
+                                            });
                                 }
-                            });
-                }
+                                break;
+
+                            case DialogInterface.BUTTON_NEGATIVE:
+                                dialog.dismiss();
+                                break;
+                        }
+                    }
+                };
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(SettingsActivity.this);
+                builder.setTitle("Warning!").setMessage("Are you sure you want to delete your account?").setPositiveButton("Yes", dialogClickListener)
+                        .setNegativeButton("No", dialogClickListener).show();
             }
         });
 
@@ -338,6 +343,18 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         auth.signOut();
     }
 
+    // funkcija koja skriva sve dugmice i to tako
+    private void hideAllInputs()
+    {
+        newEmail.setVisibility(View.GONE);
+        changeEmail.setVisibility(View.GONE);
+
+        newPassword.setVisibility(View.GONE);
+        changePassword.setVisibility(View.GONE);
+
+        photoLayout.setVisibility(View.GONE);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -361,9 +378,10 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
     private void onAccDelete(String userid)
     {
         // Ovde se brisu svi njegovi podaci iz baze
+        storage.delete();
         database.getReference("scoreTable").child(userid).removeValue();
         database.getReference("users").child(userid).removeValue();
-        // TODO izbrisi ga i iz prijateljskih veza kasnije, i photo u storage ako ima
+        // TODO izbrisi ga i iz prijateljskih veza kasnije
     }
 
     @Override
@@ -383,6 +401,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         if (requestCode == 0 || requestCode == 1)
         {
             if (resultCode == RESULT_OK) {
+                progressBar.setVisibility(View.VISIBLE);
                 if (data != null)
                     savedURI = data.getData();
                 /*UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder().setPhotoUri(selectedImage).build();
@@ -397,11 +416,19 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
                     @Override
                     public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                         Toast.makeText(SettingsActivity.this, "Profile picture updated!", Toast.LENGTH_SHORT).show();
+                        progressBar.setVisibility(View.GONE);
+                    }
+                }).addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Toast.makeText(SettingsActivity.this, "Failed to upload picture, please try again!", Toast.LENGTH_SHORT).show();
+                        progressBar.setVisibility(View.GONE);
                     }
                 });
             }
-            else
+            else {
                 Toast.makeText(this, "Action canceled!", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 }
