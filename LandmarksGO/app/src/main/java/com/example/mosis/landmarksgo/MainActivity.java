@@ -83,16 +83,17 @@ public class MainActivity extends AppCompatActivity
 
     private static final String TAG = "LandmarksGO";
     private NavigationView navigationView;
+    private SearchView search;
 
     private GoogleMap mMap;
-    private HashMap<String, Marker> mapMarkersLandmarks = new HashMap<String, Marker>();
+    private HashMap<Landmark, Marker> mapMarkersLandmarks = new HashMap<Landmark, Marker>();
     private HashMap<String, Marker> mapUseridMarker = new HashMap<String, Marker>();
     private HashMap<Marker, User> mapMarkerUser = new HashMap<Marker, User>();
 
     private int spinnerSelectedSearchOption;
     static File localFileProfileImage = null;
 
-    private Marker myLocation = null;
+    private Location myLocation = null;
 
     public static final int MARKER_LANDMARK = 1;
     public static final int MARKER_USER = 2;
@@ -503,29 +504,38 @@ public class MainActivity extends AppCompatActivity
 
     //for Search above map
     private void setUpSearchView() {
-        SearchView search=(SearchView) findViewById(R.id.searchViewMap);
+        search=(SearchView) findViewById(R.id.searchViewMap);
         search.setQueryHint("");
 
-        search.setOnQueryTextFocusChangeListener(new View.OnFocusChangeListener() {
+        /*search.setOnQueryTextFocusChangeListener(new View.OnFocusChangeListener() {
 
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 //Toast.makeText(getBaseContext(), "onFocusChange: " + String.valueOf(hasFocus), Toast.LENGTH_SHORT).show();
             }
-        });
+        });*/
 
         search.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
-                //Toast.makeText(getBaseContext(), "onQueryTextSubmit: " + query, Toast.LENGTH_SHORT).show();
                 searchMarker(query);
                 return false;
             }
 
             @Override
             public boolean onQueryTextChange(String newText) {
-                //Toast.makeText(getBaseContext(), "onQueryTextChange: " + newText, Toast.LENGTH_SHORT).show();
-                searchMarker(newText);
+                if (newText.length() > 4)
+                    searchMarker(newText);
+                return false;
+            }
+        });
+
+        search.setOnCloseListener(new SearchView.OnCloseListener() {
+            @Override
+            public boolean onClose() {
+                for (Landmark landmark: mapMarkersLandmarks.keySet()) {
+                    mapMarkersLandmarks.get(landmark).setVisible(true);
+                }
                 return false;
             }
         });
@@ -535,11 +545,41 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "MainActivity: searchMarker: searching for " + query);
         Log.d(TAG, "MainActivity: searchMarker: spinnerSelectedSearchOption=" + spinnerSelectedSearchOption);
         Marker mMarker = null;
-        if(spinnerSelectedSearchOption==0){ //searching for name
-            mMarker = mapMarkersLandmarks.get(query);
-        }
 
-        if(mMarker!=null){
+        switch (spinnerSelectedSearchOption)
+        {
+            case 0: // searching by name
+                //mMarker = mapMarkersLandmarks.get(query);
+                for (Landmark landmark: mapMarkersLandmarks.keySet()) {
+                    mMarker = mapMarkersLandmarks.get(landmark);
+                    mMarker.setVisible(landmark.title.toLowerCase().startsWith(query.toLowerCase()));
+                    mMarker.showInfoWindow();
+                }
+                break;
+            case 1: // searching by distance
+                double lat = myLocation.getLatitude();
+                double lon = myLocation.getLongitude();
+                float q_distance;
+                try {
+                    q_distance = Float.parseFloat(query);
+                }catch (Exception e){
+                    break;
+                }
+
+                for (Landmark landmark: mapMarkersLandmarks.keySet()) {
+                    mMarker = mapMarkersLandmarks.get(landmark);
+                    float distance = BackgroundService.distFrom((float)lat,(float)lon, (float)mMarker.getPosition().latitude, (float)mMarker.getPosition().longitude);
+                    mMarker.setVisible(distance <= q_distance);
+                }
+                break;
+            case 2: // searching by category
+                for (Landmark landmark: mapMarkersLandmarks.keySet()) {
+                    mMarker = mapMarkersLandmarks.get(landmark);
+                    mMarker.setVisible(landmark.type.toLowerCase().startsWith(query.toLowerCase()));
+                }
+                break;
+        }
+        /*if(mMarker!=null){
             mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(mMarker.getPosition().latitude, mMarker.getPosition().longitude)));
             mMarker.showInfoWindow();
             //TODO: Add smooth animation
@@ -547,8 +587,7 @@ public class MainActivity extends AppCompatActivity
             //Force hide the onscreen keyboard
             //InputMethodManager imm = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
             //imm.toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0);
-        };
-        Log.d(TAG, "MainActivity: searchMarker: found " + mMarker);
+        };*/
     }
 
     //for Spinner above map
@@ -557,6 +596,22 @@ public class MainActivity extends AppCompatActivity
         String arr[] = getResources().getStringArray(R.array.search_type);
         //Toast.makeText(this, "Searching: " + arr[position], Toast.LENGTH_SHORT).show();
         spinnerSelectedSearchOption = position;
+        search.setQuery("",false);
+        switch (position)
+        {
+            case 0:
+                search.setQueryHint("Enter Landmark title");
+                break;
+            case 1:
+                search.setQueryHint("Enter distance in meters");
+                break;
+            case 2:
+                search.setQueryHint("Enter Landmark category");
+                break;
+        }
+        for (Landmark landmark: mapMarkersLandmarks.keySet()) {
+            mapMarkersLandmarks.get(landmark).setVisible(true);
+        }
     }
     //for Spinner above map
     @Override
@@ -569,12 +624,10 @@ public class MainActivity extends AppCompatActivity
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+        mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
             @Override
-            public boolean onMarkerClick(Marker marker) {
-                //Toast.makeText(getApplicationContext(), marker.getTitle(), Toast.LENGTH_SHORT).show();
-                User user = null;
-                user = mapMarkerUser.get(marker);
+            public void onInfoWindowClick(Marker marker) {
+                User user = mapMarkerUser.get(marker);
                 if(user!=null){
                     Intent intent = new Intent(MainActivity.this, PlayerInfo.class);
                     intent.putExtra("uid",user.uid);
@@ -582,8 +635,6 @@ public class MainActivity extends AppCompatActivity
                     intent.putExtra("lastname",user.lastName);
                     startActivity(intent);
                 }
-
-                return false;
             }
         });
 
@@ -619,9 +670,8 @@ public class MainActivity extends AppCompatActivity
                 @Override
                 public void onMyLocationChange(Location arg0) {
                     //mMap.addMarker(new MarkerOptions().position(new LatLng(arg0.getLatitude(), arg0.getLongitude())).title("It's Me!"));
-                    if(myLocation!=null){
-                        myLocation.remove();
-                    }
+
+                    myLocation = arg0;
 
                     //addMarkers(arg0.getLatitude(),arg0.getLongitude(),"I","", smallMarker, false, MARKER_USER);
 
@@ -673,10 +723,10 @@ public class MainActivity extends AppCompatActivity
                 //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
                 Landmark landmark = dataSnapshot.getValue(Landmark.class);
                 Log.d(TAG, "onChildAdded:" + landmark.title);
-                Marker marker = addMarkers(landmark.lat, landmark.lon, landmark.title, "", null, false, "");
+                Marker marker = addMarkers(landmark.lat, landmark.lon, landmark.title, landmark.desc, null, false, "");
 
                 //Add to searchable HashMap
-                mapMarkersLandmarks.put(landmark.title, marker);
+                mapMarkersLandmarks.put(landmark, marker);
             }
 
             @Override
@@ -738,14 +788,6 @@ public class MainActivity extends AppCompatActivity
                 if(mMarker!=null) {
                     Log.d(TAG,"Brisem marker");
                     mMarker.setPosition(new LatLng(user.lat, user.lon));
-                    /*mMarker.remove();
-                    Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, null, false, user.uid);
-
-                    //Add to searchable HashMap
-                    mapUseridMarker.remove(user.uid);
-                    mapUseridMarker.put(user.uid, marker);
-
-                    mapMarkerUser.put(marker, user);*/    //TODO: remove previous marker
                 }else{
                     Log.d(TAG,"Ne brisem marker");
                 }
