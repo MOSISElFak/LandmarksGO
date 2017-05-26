@@ -737,14 +737,15 @@ public class MainActivity extends AppCompatActivity
 
                 if(mMarker!=null) {
                     Log.d(TAG,"Brisem marker");
-                    mMarker.remove();
+                    mMarker.setPosition(new LatLng(user.lat, user.lon));
+                    /*mMarker.remove();
                     Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, null, null, false, user.uid);
 
                     //Add to searchable HashMap
                     mapUseridMarker.remove(user.uid);
                     mapUseridMarker.put(user.uid, marker);
 
-                    mapMarkerUser.put(marker, user);    //TODO: remove previous marker
+                    mapMarkerUser.put(marker, user);*/    //TODO: remove previous marker
                 }else{
                     Log.d(TAG,"Ne brisem marker");
                 }
@@ -754,6 +755,7 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onChildRemoved(DataSnapshot dataSnapshot) {
                 Log.d(TAG, "onChildRemoved:" + dataSnapshot.getKey());
+                // TODO: moze da se izbrise taj marker
             }
 
             @Override
@@ -791,7 +793,6 @@ public class MainActivity extends AppCompatActivity
                     mo.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(R.drawable.person_friend, MainActivity.this)));
                 }else{
                     mo.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(R.drawable.person, MainActivity.this)));
-
                 }
             }
         }
