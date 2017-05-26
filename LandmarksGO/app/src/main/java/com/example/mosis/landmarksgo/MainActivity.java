@@ -1,5 +1,7 @@
 package com.example.mosis.landmarksgo;
 
+import android.app.ActivityManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -8,6 +10,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -108,9 +111,14 @@ public class MainActivity extends AppCompatActivity
     private Intent backgroundService;
 
     public static HashMap<String,Marker> friendsMarker;
+    public static HashMap<String,Marker> landmarksMarker;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        //to use network operations in main thread (BackgroundService)
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
 
         auth = FirebaseAuth.getInstance();
         loggedUser = auth.getCurrentUser();
@@ -139,6 +147,7 @@ public class MainActivity extends AppCompatActivity
         }
         friendList = new ArrayList<String>();
         friendsMarker = new HashMap<>();
+        landmarksMarker = new HashMap<>();
     }
 
     @Override
@@ -220,7 +229,9 @@ public class MainActivity extends AppCompatActivity
                     backgroundService.putExtra("settingsGpsRefreshTime", settingsGpsRefreshTime);
                     backgroundService.putExtra("loggedUserUid", loggedUser.getUid());
 
-                    startService(backgroundService);
+                    if(!isMyServiceRunning(BackgroundService.class)){
+                        startService(backgroundService);
+                    }
                     /*
                     Runnable r = new Runnable() {
                         @Override
@@ -793,11 +804,28 @@ public class MainActivity extends AppCompatActivity
             friendsMarker.put(uid, marker);
         }
 
+        if(uid==null || uid==""){
+            if(landmarksMarker.containsKey(marker.getId())){
+                landmarksMarker.remove(marker.getId());
+            }
+            landmarksMarker.put(marker.getId(), marker);
+        }
+
         if(moveCamera){
             mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(lat, lng)));
             // Zoom in the Google Map
             //mMap.animateCamera(CameraUpdateFactory.zoomTo(5));
         }
         return marker;
+    }
+
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

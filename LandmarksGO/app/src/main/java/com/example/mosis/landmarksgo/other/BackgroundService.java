@@ -1,16 +1,19 @@
 package com.example.mosis.landmarksgo.other;
 
 import android.Manifest;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.ActivityCompat;
@@ -24,11 +27,15 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 import static com.example.mosis.landmarksgo.MainActivity.friendsMarker;
+import static com.example.mosis.landmarksgo.MainActivity.landmarksMarker;
 
 //TODO: Implement LocationListener and upload user location to server
 public class BackgroundService extends Service implements LocationListener {
-    private static final String TAG = "ServiceTAG";
+    private static final String TAG = "BackgroundService";
     private static boolean serviceRunning;
     private LocationManager locationManager;
     private String provider;
@@ -85,59 +92,86 @@ public class BackgroundService extends Service implements LocationListener {
         Log.d(TAG,"BackgroundService onDestroy");
         locationManager.removeUpdates(this);
         serviceRunning=false;
-        //serviceThread.stop();
         super.onDestroy();
     }
 
     //>LOCATION
     @Override
     public void onLocationChanged(Location location) {
-        double myNewLat, myNewLon;
-        myNewLat=location.getLatitude();
-        myNewLon=location.getLongitude();
-        Log.d(TAG,"New location: " + myNewLat + " " + myNewLon);
-        DatabaseReference users = FirebaseDatabase.getInstance().getReference("users");
-        users.child(loggedUserUid).child("lat").setValue(myNewLat);
-        users.child(loggedUserUid).child("lon").setValue(myNewLon);
+        if(isInternetAvailable() && isNetworkConnected()){
+            double myNewLat, myNewLon;
+            myNewLat=location.getLatitude();
+            myNewLon=location.getLongitude();
+            Log.d(TAG,"New location: " + myNewLat + " " + myNewLon);
+            DatabaseReference users = FirebaseDatabase.getInstance().getReference("users");
+            users.child(loggedUserUid).child("lat").setValue(myNewLat);
+            users.child(loggedUserUid).child("lon").setValue(myNewLon);
 
-        //friendsMarker is from the MainActivity
-        for (String key: friendsMarker.keySet()) {
-            Marker marker = friendsMarker.get(key);
-            Float distanceFromMarker = distFrom((float)myNewLat,(float)myNewLon,(float)marker.getPosition().latitude, (float)marker.getPosition().longitude);
-            if(distanceFromMarker < 10000){ //TODO: Change this
-                showNotification("The friend is nearby",marker.getTitle() + " is " + Math.round(distanceFromMarker) + " meters away from you!");
+            //friendsMarker is from the MainActivity
+            for (String key: friendsMarker.keySet()) {
+                Marker marker = friendsMarker.get(key);
+                Float distanceFromMarker = distFrom((float)myNewLat,(float)myNewLon,(float)marker.getPosition().latitude, (float)marker.getPosition().longitude);
+                if(distanceFromMarker < 100000){ //TODO: Change this
+                    showNotification("The friend is nearby", marker.getTitle() + " is " + Math.round(distanceFromMarker) + " meters away from you!", false);
+                }
+                Log.d(TAG,"Iz servisa citam friendsMarker: " + key + " " + marker.getPosition() + " " + marker.getTitle() + " distance: " + distanceFromMarker);
             }
-            Log.d(TAG,"Iz servisa citam friendsMarker: " + key + " " + marker.getPosition() + " " + marker.getTitle() + " distance: " + distanceFromMarker);
-        }
 
+            //landmarksMarker is from the MainActivity
+            for (String key: landmarksMarker.keySet()) {
+                Marker marker = landmarksMarker.get(key);
+                Float distanceFromMarker = distFrom((float)myNewLat,(float)myNewLon,(float)marker.getPosition().latitude, (float)marker.getPosition().longitude);
+                if(distanceFromMarker < 100000){ //TODO: Change this
+                    showNotification("The landmark is nearby", marker.getTitle() + " is " + Math.round(distanceFromMarker) + " meters away from you!", true);
+                }
+                Log.d(TAG,"Iz servisa citam landmarksMarker: " + key + " " + marker.getPosition() + " " + marker.getTitle() + " distance: " + distanceFromMarker);
+            }
+        }
     }
 
-    private void showNotification(String title, String text) {
-        //TODO: show notification only once, quietly update the distance
-        NotificationCompat.Builder mBuilder =
-                    new NotificationCompat.Builder(this)
-                            .setSmallIcon(R.drawable.person_friend)
-                            .setContentTitle(title)
-                            .setContentText(text);
-                            //.setDefaults(Notification.DEFAULT_SOUND)
-                            //.setDefaults(Notification.DEFAULT_VIBRATE);
-        // Creates an explicit intent for an Activity in your app
-        Intent resultIntent = new Intent(this, MainActivity.class);
+    //Different Id's will show up as different notifications
+    private int mNotificationId = 1;
+    //Some things we only have to set the first time.
+    private boolean firstTime = true;
+    int i=0;
+    NotificationCompat.Builder mBuilder = null;
+    private void showNotification(String title, String text, boolean landmark) {
 
-        // The stack builder object will contain an artificial back stack for the
-        // started Activity.
-        // This ensures that navigating backward from the Activity leads out of
-        // your application to the Home screen.
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-        // Adds the back stack for the Intent (but not the Intent itself)
-        stackBuilder.addParentStack(MainActivity.class);
-        // Adds the Intent that starts the Activity to the top of the stack
-        stackBuilder.addNextIntent(resultIntent);
-        PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
-        mBuilder.setContentIntent(resultPendingIntent);
         NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        // mId allows you to update the notification later on.
-        mNotificationManager.notify(1, mBuilder.build());
+        if(firstTime){
+            firstTime=false;
+
+            mBuilder = new NotificationCompat.Builder(this)
+                                .setContentTitle(title)
+                                .setDefaults(Notification.DEFAULT_SOUND)
+                                .setDefaults(Notification.DEFAULT_VIBRATE)
+                                .setOnlyAlertOnce(true);
+
+            // Creates an explicit intent for an Activity in your app
+            Intent resultIntent = new Intent(this, MainActivity.class);
+
+            // The stack builder object will contain an artificial back stack for the started Activity.
+            // This ensures that navigating backward from the Activity leads out of your application to the Home screen.
+            TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+            // Adds the back stack for the Intent (but not the Intent itself)
+            stackBuilder.addParentStack(MainActivity.class);
+            // Adds the Intent that starts the Activity to the top of the stack
+            stackBuilder.addNextIntent(resultIntent);
+            PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+            mBuilder.setContentIntent(resultPendingIntent);
+        }
+        if(landmark){
+            mBuilder
+                    .setLargeIcon(BitmapFactory.decodeResource(this.getResources(), R.drawable.icon))
+                    .setSmallIcon(R.drawable.icon);
+        }else{
+            mBuilder
+                    .setLargeIcon(BitmapFactory.decodeResource(this.getResources(), R.drawable.person_friend))
+                    .setSmallIcon(R.drawable.icon);
+        }
+
+        mBuilder.setContentText(text);
+        mNotificationManager.notify(mNotificationId, mBuilder.build());
     }
 
     @Override
@@ -166,5 +200,20 @@ public class BackgroundService extends Service implements LocationListener {
         float dist = (float) (earthRadius * c);
 
         return dist;
+    }
+
+    private boolean isNetworkConnected() {
+        final ConnectivityManager connectivityManager = ((ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE));
+        return connectivityManager.getActiveNetworkInfo() != null && connectivityManager.getActiveNetworkInfo().isConnected();
+    }
+
+    public boolean isInternetAvailable() {
+            try {
+                InetAddress address = InetAddress.getByName("landmarkgo-d1a7c.firebaseio.com");
+                return !address.equals("");
+            } catch (UnknownHostException e) {
+                // Log error
+            }
+            return false;
     }
 }
