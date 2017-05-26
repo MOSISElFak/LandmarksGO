@@ -106,6 +106,8 @@ public class MainActivity extends AppCompatActivity
     private static ArrayList<String> friendList;
     private static boolean pauseWaitingForFriendsList =false;
     private Intent backgroundService;
+
+    public static HashMap<String,Marker> friendsMarker;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -136,6 +138,7 @@ public class MainActivity extends AppCompatActivity
             backgroundService = new Intent(MainActivity.this, BackgroundService.class);
         }
         friendList = new ArrayList<String>();
+        friendsMarker = new HashMap<>();
     }
 
     @Override
@@ -772,11 +775,7 @@ public class MainActivity extends AppCompatActivity
             //.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(icon, MainActivity.this)))); //of course, this takes too much time to process
             if(uid.equals(loggedUser.getUid())){
                 mo.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(R.drawable.person_i, MainActivity.this)));
-                Log.d(TAG,"addMarkers adding I");
             }else{
-                //if friend
-                //if stranger
-                Log.d(TAG,"addMarkers adding friend");
                 if(friendList.contains(uid)){
                     mo.icon(BitmapDescriptorFactory.fromBitmap(BitmapManipulation.getMarkerBitmapFromView(R.drawable.person_friend, MainActivity.this)));
                 }else{
@@ -787,6 +786,12 @@ public class MainActivity extends AppCompatActivity
         }
 
         marker = mMap.addMarker(mo);
+        if(friendList.contains(uid)){
+            if(friendsMarker.containsKey(uid)){
+                friendsMarker.remove(uid);
+            }
+            friendsMarker.put(uid, marker);
+        }
 
         if(moveCamera){
             mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(lat, lng)));
