@@ -10,7 +10,6 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -21,6 +20,7 @@ import android.widget.TextView;
 
 import com.example.mosis.landmarksgo.R;
 
+import java.lang.reflect.Method;
 import java.util.Set;
 
 public class DeviceListActivity extends Activity {
@@ -47,9 +47,17 @@ public class DeviceListActivity extends Activity {
 		getWidgetReferences();
 		bindEventHandler();
 		initializeValues();
+
+		//start discovery immediately, no need to press the button
+		startDiscovery();
 	}
 
-	private void getWidgetReferences() {
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    private void getWidgetReferences() {
 		Log.d(TAG, "DeviceListActivity: getWidgetReferences started");
 		tvDeviceListPairedDeviceTitle = (TextView) findViewById(R.id.tvDeviceListPairedDeviceTitle);
 		tvDeviceListNewDeviceTitle = (TextView) findViewById(R.id.tvDeviceListNewDeviceTitle);
@@ -66,12 +74,14 @@ public class DeviceListActivity extends Activity {
 		lvDeviceListPairedDevice.setOnItemClickListener(mDeviceClickListener);
 		lvDeviceListNewDevice.setOnItemClickListener(mDeviceClickListener);
 
+        /*
 		btnDeviceListScan.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
 				startDiscovery();
 				btnDeviceListScan.setVisibility(View.GONE);
 			}
 		});
+		*/
 	}
 
 	private void initializeValues() {
@@ -95,14 +105,23 @@ public class DeviceListActivity extends Activity {
 
 		// If there are paired devices, add each one to the ArrayAdapter
 		if (pairedDevices.size() > 0) {
-			tvDeviceListPairedDeviceTitle.setVisibility(View.VISIBLE);
+			//tvDeviceListPairedDeviceTitle.setVisibility(View.VISIBLE);
 			for (BluetoothDevice device : pairedDevices) {
-				pairedDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
-				//Toast.makeText(this,"Paired device: " + device.getName() + "\n" + device.getAddress(),Toast.LENGTH_SHORT).show();
+				unpairDevice(device); //TODO: Dirty fix because app sometimes crashes when connecting to a paired device.
+				//pairedDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
 			}
 		} else {
 			String noDevices = getResources().getText(R.string.none_paired).toString();
 			pairedDevicesArrayAdapter.add(noDevices);
+		}
+	}
+
+	private void unpairDevice(BluetoothDevice device) {
+		try {
+			Method m = device.getClass().getMethod("removeBond", (Class[]) null);
+			m.invoke(device, (Object[]) null);
+		} catch (Exception e) {
+			Log.e(TAG, e.getMessage());
 		}
 	}
 

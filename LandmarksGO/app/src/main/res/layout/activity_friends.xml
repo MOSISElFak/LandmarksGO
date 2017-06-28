@@ -12,6 +12,13 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <ProgressBar
+        android:id="@+id/progressBarFriends"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:visibility="invisible"/>
+
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/fabAddNewFriend"
         android:layout_width="wrap_content"

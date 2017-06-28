@@ -29,6 +29,7 @@ import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -51,55 +52,36 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Friends extends AppCompatActivity {
     public static final String FRIEND_REQUEST_CODE = "MONUMENTS_GO_FRIEND_REQUEST_";
+    private static final int BT_DISCOVERABLE_TIME = 120;
     private static ArrayList<DataModel> dataModels;
+    private  CustomAdapter adapter;
+    ProgressBar pb;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "MainActivity: onCreate started");
         setContentView(R.layout.activity_friends);
 
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (!bluetoothAdapter.isEnabled()) {
-            //Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            //startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-        } else {
-
-            if (chatService == null) {
-                setupChat();
-            }
-        }
-        if (bluetoothAdapter == null) {
-            Toast.makeText(Friends.this, "Bluetooth is not available", Toast.LENGTH_LONG).show();
-            finish();
-            return;
-        }
-        ensureDiscoverable();
+        pb = (ProgressBar) findViewById(R.id.progressBarFriends);
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fabAddNewFriend);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Waiting for incoming friend request or send one.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
-                //Intent intent = new Intent(Friends.this, FriendsAddNew.class);
-                //startActivity(intent);
-
-                //ensureDiscoverable();
-
-                if (chatService != null) {
-                    if (chatService.getState() == ChatService.STATE_NONE) {
-                        chatService.start();
-                    }
+                Snackbar.make(view, "Wait for incoming friend request or send one.", Snackbar.LENGTH_LONG).setAction("Action", null).show();
+                bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                if (bluetoothAdapter == null) {
+                    Toast.makeText(Friends.this, "Bluetooth is not available", Toast.LENGTH_LONG).show();
+                    //finish();
+                    return;
                 }
-
-                addNewFriend();
-            }
-        });
+                ensureDiscoverable(bluetoothAdapter);   //onActivityResult checks if discoverability in enabled and then sends friend request
+            }});
 
         FirebaseAuth auth = FirebaseAuth.getInstance();
         final FirebaseUser user = auth.getCurrentUser();
@@ -107,15 +89,13 @@ public class Friends extends AppCompatActivity {
         DatabaseReference dbRef = database.getReference("friends/" + user.getUid());
 
         dataModels = new ArrayList<>();
-        ListView listView = (ListView) findViewById(R.id.listViewFriends);
-        final CustomAdapter adapter;
+        final ListView listView = (ListView) findViewById(R.id.listViewFriends);
         adapter= new CustomAdapter(dataModels,getApplicationContext());
         listView.setAdapter(adapter);
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
                 final DataModel dataModel= dataModels.get(position);
-                //Toast.makeText(Friends.this,"" + dataModel.getName(),Toast.LENGTH_SHORT).show();
                 new AlertDialog.Builder(Friends.this)
                         .setTitle("Removing friendship")
                         .setMessage("Are you sure you want to remove " + dataModel.getName())
@@ -143,39 +123,35 @@ public class Friends extends AppCompatActivity {
             }
         });
 
-        //TODO: Load stuff from server
-        //Bitmap bitmap =  BitmapFactory.decodeResource(this.getResources(), R.drawable.obama);
-
-        //dataModels.add(new DataModel("President",100,bitmap, 1));
-        //bitmap = BitmapManipulation.getCroppedBitmap(bitmap);
-        //dataModels.add(new DataModel("Circular",50,bitmap, 2));
-        //dataModels.add(new DataModel("",0,null, 3));
-        //adapter.notifyDataSetChanged();
-
         //search server for current user's friends
+        getFriendsFromServer(dbRef, adapter);
+    }
+
+    private void getFriendsFromServer(DatabaseReference dbRef, final CustomAdapter adapter) {
+        Toast.makeText(this,"Getting friends from server",Toast.LENGTH_SHORT).show();
         dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                Log.d(TAG,"u valueevent listener: count " + dataSnapshot.getChildrenCount());
+                //Log.d(TAG,"u valueevent listener: count " + dataSnapshot.getChildrenCount());
                 for(DataSnapshot singleSnapshot : dataSnapshot.getChildren()){
                     String json = singleSnapshot.toString();
-                    Log.d(TAG,"json: " + json);
+                   // Log.d(TAG,"json: " + json);
 
                     //TODO: deserialize via class, not like this
                     final String friendUid = json.substring(json.indexOf("value = ") + 8, json.length()-2);
-                    Log.d(TAG,"friendUid: " + friendUid);
+                    //Log.d(TAG,"friendUid: " + friendUid);
 
                     final String friendNumber = json.substring(json.indexOf("key = ") + 6, json.indexOf(","));
-                    Log.d(TAG,"friendNumber: " + friendNumber);
+                    //Log.d(TAG,"friendNumber: " + friendNumber);
 
                     //search server for friend's account
                     FirebaseDatabase database = FirebaseDatabase.getInstance();
                     database.getReference("users").child(friendUid).addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
+                            pb.setVisibility(View.VISIBLE);
                             final User user = dataSnapshot.getValue(User.class);
                             if(user!=null){
-                                File localFileProfileImage = null;
                                 StorageReference storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + friendUid + ".jpg");
                                 final long MEMORY = 10 * 1024 * 1024;
 
@@ -200,6 +176,8 @@ public class Friends extends AppCompatActivity {
 
                                                 dataModels.add(new DataModel(user.firstName + " " + user.lastName + "\n" + user.uid,Integer.parseInt(pointsS),bitmap,5,Integer.parseInt(friendNumber)));
                                                 adapter.notifyDataSetChanged();
+
+                                                pb.setVisibility(View.GONE);
                                             }
                                             @Override
                                             public void onCancelled(DatabaseError databaseError) {
@@ -239,6 +217,7 @@ public class Friends extends AppCompatActivity {
     }
 
     private void addNewFriend() {
+        Log.d(TAG, "Friends addNewFriend started");
         Runnable r = new Runnable() {
 
             @Override
@@ -250,6 +229,8 @@ public class Friends extends AppCompatActivity {
         Thread btThread = new Thread(r);
         btThread.start();
     }
+
+    //----------------------------------------------------------------------------------------------------------------------------------
 
     private final static String TAG = "BT";
     public static final int MESSAGE_STATE_CHANGE = 1;
@@ -320,87 +301,72 @@ public class Friends extends AppCompatActivity {
 
                     String message = readMessage;
 
-                    //TODO: Test this on two real devices
                     int _char = message.lastIndexOf("_");
                     String messageCheck = message.substring(0,_char+1);
                     final String friendsUid = message.substring(_char+1);
                     Log.d(TAG,"TEMP messageCheck:" + messageCheck); //messageCheck:MONUMENTS_GO_FRIEND_REQUEST_
                     Log.d(TAG,"TEMP friendsUid:" + friendsUid);
                     Log.d(TAG,"TEMP FRIEND_REQUEST_CODE:" + FRIEND_REQUEST_CODE);//FRIEND_REQUEST_CODE:MONUMENTS_GO_FRIEND_REQUEST_
-                    if(messageCheck.equals(FRIEND_REQUEST_CODE)){
+                    if(messageCheck.equals(FRIEND_REQUEST_CODE)) {
                         Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                         v.vibrate(500);
 
-                        new AlertDialog.Builder(Friends.this)
-                                .setTitle("Confirm friend request")
-                                .setMessage("Are you sure you want to become friends with a device\n" + connectedDeviceName + "\nUserID(" + friendsUid + ")")
-                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        //Toast.makeText(Friends.this, "You accepted friend request!",Toast.LENGTH_SHORT).show();
-                                        //FirebaseDatabase database;
-                                        //DatabaseReference root;
+                        runOnUiThread(new Runnable() {
+                            public void run() {
+                                new AlertDialog.Builder(Friends.this)
+                                        .setTitle("Confirm friend request")
+                                        .setMessage("Are you sure you want to become friends with a device\n" + connectedDeviceName + "\nUserID(" + friendsUid + ")")
+                                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                final String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+                                                final FirebaseDatabase database = FirebaseDatabase.getInstance();
+                                                final DatabaseReference dbRef = database.getReference("friends/" + myUid);
+                                                dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                                                    @Override
+                                                    public void onDataChange(DataSnapshot dataSnapshot) {
+                                                        List<String> friendsList = new ArrayList<>();
+                                                        Log.d(TAG, "u valueevent listener: count " + dataSnapshot.getChildrenCount());
+                                                        for (DataSnapshot singleSnapshot : dataSnapshot.getChildren()) {
+                                                            String json = singleSnapshot.toString();
+                                                            //TODO: deserialize via class, not like this
+                                                            String friendUid = json.substring(json.indexOf("value = ") + 8, json.length() - 2);
+                                                            Log.d(TAG, "friendUid2: " + friendUid);
+                                                            friendsList.add(friendUid);
+                                                        }
+                                                        if (friendsList.contains(friendsUid)) {
+                                                            Toast.makeText(Friends.this, "You already have this friend!", Toast.LENGTH_SHORT).show();
+                                                        } else {
+                                                            friendsList.add(friendsUid); //adding new friendship
+                                                            DatabaseReference dbFriends = database.getReference("friends/");
+                                                            dbFriends.child(myUid).setValue(friendsList);
+                                                            Snackbar.make(findViewById(android.R.id.content), "You are now friends with " + friendsUid, Snackbar.LENGTH_LONG).show();
+                                                            adapter.clear();
+                                                            getFriendsFromServer(dbRef, adapter);
+                                                        }
+                                                    }
 
-                                        //send friendship to the server
-                                        //TODO: this code can add many same friendships. Don't send friendship data if you are already friends with other user.
-                                        /*
-                                        database = FirebaseDatabase.getInstance();
-                                        root = database.getReference("friends/");
-                                        List<String> friends = new ArrayList<String>();
-                                        friends.add(friendsUid);
-                                        String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-                                        //root.push().setValue(friendsUid);
-                                        root.child(myUid).setValue(friends);
-                                        */
-                                        final String myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-                                        final FirebaseDatabase database = FirebaseDatabase.getInstance();
-                                        DatabaseReference dbRef = database.getReference("friends/" + myUid);
-                                        dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                                            @Override
-                                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                                List<String> friendsList = new ArrayList<>();
-                                                Log.d(TAG,"u valueevent listener: count " + dataSnapshot.getChildrenCount());
-                                                for(DataSnapshot singleSnapshot : dataSnapshot.getChildren()){
-                                                    String json = singleSnapshot.toString();
-                                                    //TODO: deserialize via class, not like this
-                                                    String friendUid = json.substring(json.indexOf("value = ") + 8, json.length()-2);
-                                                    Log.d(TAG,"friendUid2: " + friendUid);
-                                                    friendsList.add(friendUid);
-                                                }
-                                                if(friendsList.contains(friendsUid)){
-                                                    Toast.makeText(Friends.this,"You already have this friend!",Toast.LENGTH_SHORT).show();
-                                                }else{
-                                                    friendsList.add(friendsUid); //adding new friendship
-                                                    DatabaseReference dbFriends = database.getReference("friends/");
-                                                    dbFriends.child(myUid).setValue(friendsList);
-                                                    Snackbar.make(findViewById(android.R.id.content), "You are now friends with " + friendsUid, Snackbar.LENGTH_LONG).show();
-                                                }
+                                                    @Override
+                                                    public void onCancelled(DatabaseError databaseError) {
+                                                        Log.e(TAG, "onCancelled", databaseError.toException());
+                                                    }
+                                                });
                                             }
-                                            @Override
-                                            public void onCancelled(DatabaseError databaseError) {
-                                                Log.e(TAG, "onCancelled", databaseError.toException());
+                                        })
+                                        .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                Toast.makeText(Friends.this, "You declined friend request", Toast.LENGTH_SHORT).show();
                                             }
-                                        });
-                                    }
-                                })
-                                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        Toast.makeText(Friends.this, "You declined friend request",Toast.LENGTH_SHORT).show();
-                                    }
-                                })
-                                .setIcon(android.R.drawable.ic_dialog_alert)
-                                .show();
+                                        })
+                                        .setIcon(android.R.drawable.ic_dialog_alert)
+                                        .show();    //TODO: puca ovde, stavi u try catch
+                                }
+                            });
                     }
-
-                    //chatArrayAdapter.add(connectedDeviceName + ":  " + readMessage);
-
-                    //SimpleDateFormat s = new SimpleDateFormat("ddMMyyyyhhmmss");
-                    //String format = s.format(new Date());
-                    //sendMessage("ok: " + format);
                     break;
                 case MESSAGE_DEVICE_NAME:
                     Log.d(TAG, "MainActivity: handleMessage MESSAGE_DEVICE_NAME");
                     connectedDeviceName = msg.getData().getString(DEVICE_NAME);
-                    Toast.makeText(getApplicationContext(), "Connected to " + connectedDeviceName, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), "Connected to " + connectedDeviceName + "\nClose upper window and confirm friend request.", Toast.LENGTH_LONG).show();
                     break;
                 case MESSAGE_TOAST:
                     Log.d(TAG, "MainActivity: handleMessage MESSAGE_TOAST");
@@ -435,6 +401,7 @@ public class Friends extends AppCompatActivity {
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         Log.d(TAG, "MainActivity: onActivityResult started");
+        Log.d(TAG, "requestCode=" + requestCode + " resultCode=" + resultCode);
         switch (requestCode) {
             case REQUEST_CONNECT_DEVICE_SECURE:
                 if (resultCode == Activity.RESULT_OK) {
@@ -447,11 +414,13 @@ public class Friends extends AppCompatActivity {
                 }
                 break;
             case REQUEST_ENABLE_BT:
-                if (resultCode == Activity.RESULT_OK) {
+                if (resultCode == BT_DISCOVERABLE_TIME) {
+                    //Toast.makeText(this,"Setup chat", Toast.LENGTH_SHORT).show();
                     setupChat();
+                    addNewFriend();
                 } else {
                     Toast.makeText(this, R.string.bt_not_enabled_leaving, Toast.LENGTH_SHORT).show();
-                    finish();
+                    //finish();
                 }
                 break;
         }
@@ -464,7 +433,7 @@ public class Friends extends AppCompatActivity {
         try{
             chatService.connect(device, secure);
         }catch (Exception e){
-            Toast.makeText(this, "Error! Other user must be in the Friends activity with activated Bluetooth.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Error! Other user must click on + button.", Toast.LENGTH_LONG).show();
             Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
             v.vibrate(500);
         }
@@ -499,13 +468,13 @@ public class Friends extends AppCompatActivity {
         return false;
     }
 
-    private void ensureDiscoverable() {
+    private void ensureDiscoverable(BluetoothAdapter bluetoothAdapter) {
         Log.d(TAG, "MainActivity: ensureDiscoverable started");
-        if (bluetoothAdapter.getScanMode() != BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
+        //if (bluetoothAdapter.getScanMode() != BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) { //this must be commented because then onActivityResult is not called when BT is enabled before enterin Friends activity
             Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-            discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 120);
-            startActivity(discoverableIntent);
-        }
+            discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, BT_DISCOVERABLE_TIME);
+            startActivityForResult(discoverableIntent,REQUEST_ENABLE_BT);
+        //}
     }
 
     private void sendMessage(String message) {
@@ -547,7 +516,7 @@ public class Friends extends AppCompatActivity {
         actionBar.setSubtitle(subTitle);
     }
 
-    private void setupChat() {
+    private boolean setupChat() {
         Log.d(TAG, "MainActivity: setupChat started");
         //chatArrayAdapter = new ArrayAdapter<String>(this, R.layout.message);
         //lvMainChat.setAdapter(chatArrayAdapter);
@@ -555,10 +524,14 @@ public class Friends extends AppCompatActivity {
         chatService = new ChatService(this, handler);
 
         outStringBuffer = new StringBuffer("");
+
+        if (chatService.getState() == ChatService.STATE_NONE) {
+            chatService.start();
+        }
+        return true;
     }
 
     private void sendFriendRequest(){
-        //TODO: When two devices are connected, send friend request. Show alert to confirm it.
         String message = FRIEND_REQUEST_CODE + FirebaseAuth.getInstance().getCurrentUser().getUid();
         Log.d(TAG, "MainActivity: addNewFriend sendingMessage:" + message);
         sendMessage(message);
@@ -568,34 +541,6 @@ public class Friends extends AppCompatActivity {
     public void onStart() {
         super.onStart();
         Log.d(TAG, "MainActivity: onStart started");
-        /* moved this to addNewFriend function
-        if (!bluetoothAdapter.isEnabled()) {
-            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-        } else {
-            if (chatService == null)
-                setupChat();
-        }
-        */
-/*
-        //TODO: Move this to FAB
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (!bluetoothAdapter.isEnabled()) {
-            //Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            //startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-        } else {
-
-            if (chatService == null) {
-                setupChat();
-            }
-        }
-        if (bluetoothAdapter == null) {
-            Toast.makeText(Friends.this, "Bluetooth is not available", Toast.LENGTH_LONG).show();
-            finish();
-            return;
-        }
-        ensureDiscoverable();
-*/
     }
 
     @Override

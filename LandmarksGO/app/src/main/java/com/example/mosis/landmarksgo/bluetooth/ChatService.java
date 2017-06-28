@@ -261,7 +261,8 @@ public class ChatService {
 			while (state != STATE_CONNECTED) {
 				try {
 					socket = serverSocket.accept();
-				} catch (IOException e) {
+				} catch (Throwable e) {	//was Exception
+					Log.e(TAG,"Error " + e.getMessage());
 					break;
 				}
 
@@ -294,7 +295,7 @@ public class ChatService {
 			Log.d(TAG, "ChatService: AcceptThread cancel");
 			try {
 				serverSocket.close();
-			} catch (IOException e) {
+			} catch (Throwable e) { //was IOException
 			}
 		}
 	}
