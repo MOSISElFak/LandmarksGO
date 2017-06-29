@@ -30,7 +30,7 @@ public class User {
         this.gpsrefresh = 10;
         this.showfriends = true;
         this.showplayers = true;
-        this.workback = false;
+        this.workback = true;
         this.uid = uid;
     }
 

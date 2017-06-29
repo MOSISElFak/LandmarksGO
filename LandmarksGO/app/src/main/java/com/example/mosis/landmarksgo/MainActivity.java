@@ -7,9 +7,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
 import android.location.Location;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.support.annotation.NonNull;
@@ -58,7 +56,6 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FileDownloadTask;
 import com.google.firebase.storage.FirebaseStorage;
@@ -68,9 +65,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
 
 import static com.example.mosis.landmarksgo.R.id.map;
 
@@ -104,7 +98,7 @@ public class MainActivity extends AppCompatActivity
     private static ImageView profilePicture;
 
     private static boolean settingsShowPlayers;
-    private static boolean settingsShowFriends;
+    private static boolean settingsShowPlayersPrevious;
     private static boolean settingsBackgroundService;
     private static int settingsGpsRefreshTime;
 
@@ -166,13 +160,19 @@ public class MainActivity extends AppCompatActivity
         if (authListener != null) {
             auth.removeAuthStateListener(authListener);
         }
-        //stopService(backgroundService);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         Log.d(TAG, "onPause");
+
+        if(!settingsBackgroundService && isMyServiceRunning(BackgroundService.class)){
+            Toast.makeText(this,"Stopping background service",Toast.LENGTH_SHORT).show();
+            stopService(backgroundService);
+        }
+
+        System.gc();
     }
 
     @Override
@@ -186,14 +186,42 @@ public class MainActivity extends AppCompatActivity
         }
 
         if(loggedUser!=null){
+            friendList.clear();
+            if(mMap!=null){
+                mMap.clear();
+            }
+
             customizeUI();
-            readSettingsFromServer();
+            getFriendsUidFromServer();
+            pauseWaitingForFriendsList=true;
+
+            Runnable r2 = new Runnable() {
+                @Override
+                public void run() {
+                    mapMarkersLandmarks.clear();
+                    mapUseridMarker.clear();
+                    mapMarkerUser.clear();
+
+                    while(pauseWaitingForFriendsList){
+                        synchronized (this) {
+                            try {
+                                wait(100);
+                                Log.d(TAG,"Waiting 100ms");
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    readSettingsFromServer();   //loadAllPlayersFromServer() must be inside this function
+                    loadLandmarksFromServer();
+                }
+            };
+            Thread loadEverythingFromServer = new Thread(r2);
+            loadEverythingFromServer.start();
         }
-        //if(mMap!=null)
-            //mMap.clear(); //TODO: should this be here?
     }
 
-    private void getFriendsUidFromServer() {    //TODO: This works only when user exits and opens the app. Doesn't work the there is a change to friends in Friends activity.
+    private void getFriendsUidFromServer() {
         Log.d(TAG,"getFriendsUidFromServer started");
         pauseWaitingForFriendsList =true;
         DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("friends/" + loggedUser.getUid());
@@ -228,31 +256,20 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 User u = dataSnapshot.getValue(User.class);
-                settingsShowFriends = u.showfriends;
                 settingsShowPlayers = u.showplayers;
                 settingsBackgroundService = u.workback;
                 settingsGpsRefreshTime = u.gpsrefresh;
 
-                if(settingsBackgroundService){
-                    backgroundService.putExtra("settingsGpsRefreshTime", settingsGpsRefreshTime);
-                    backgroundService.putExtra("loggedUserUid", loggedUser.getUid());
+                if(settingsShowPlayers){
+                    loadAllPlayersFromServer();
+                }
 
-                    if(!isMyServiceRunning(BackgroundService.class)){
-                        startService(backgroundService);
-                    }
-                    /*
-                    Runnable r = new Runnable() {
-                        @Override
-                        public void run() {
-                            startService(backgroundService);
-                        }
-                    };
-                    Thread backgroundServiceThread = new Thread(r);
-                    backgroundServiceThread.start();
-                    */
-                }else{
-                    Toast.makeText(MainActivity.this, "Stopping background service", Toast.LENGTH_SHORT).show();
-                    stopService(backgroundService);
+                //always start "backgroundService" because that is where gps update happen. Stopping service happens only in onPause() and onDestroy()
+                backgroundService.putExtra("settingsGpsRefreshTime", settingsGpsRefreshTime);
+                backgroundService.putExtra("loggedUserUid", loggedUser.getUid());
+
+                if(!isMyServiceRunning(BackgroundService.class)){
+                    startService(backgroundService);
                 }
             }
 
@@ -267,7 +284,7 @@ public class MainActivity extends AppCompatActivity
     protected void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy");
-        //stopService(backgroundService);
+        stopService(backgroundService);
     }
 
     @Override
@@ -300,26 +317,6 @@ public class MainActivity extends AppCompatActivity
             startActivity(intent);
             return true;
         }
-
-        if (id == R.id.action_sendfriendrequest) {
-            //TODO: temporary
-            //DatabaseReference dbRef = database.getReference("friends/");
-
-            //dbRef.push().setValue(friendship);
-            //dbRef.child(myUid).setValue(getRandomFriendship());
-            //root.child(user.getUid()).setValue(friendship);
-
-            //Query phoneQuery = dbRef.orderByChild(myUid).equalTo(myUid);
-            //Query phoneQuery = dbRef.equalTo(myUid);
-
-            pushRandomFriendships(loggedUser.getUid());
-            return true;
-        }
-
-        if (id==R.id.action_getfriends){
-            Log.d(TAG,"My myUid:" + loggedUser.getUid());
-            getFriends();
-        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -344,31 +341,6 @@ public class MainActivity extends AppCompatActivity
                 Log.e(TAG, "onCancelled", databaseError.toException());
             }
         });
-    }
-
-    @NonNull
-    private String getRandomFirebaseUid() {
-        String randomUid = UUID.randomUUID().toString();
-        randomUid = randomUid.replaceAll("-", "");
-        randomUid = randomUid.substring(0, 28);
-        return randomUid;
-    }
-
-    private List<String> getRandomFriendship(){
-        Random ran = new Random();
-        int x = ran.nextInt(5) + 2;
-        List<String> friendsList = new ArrayList<>();
-        for(int i=0;i<x;i++){
-            friendsList.add(getRandomFirebaseUid());
-        }
-        //return new Friendship(user.getUid(), friendsList);
-        return friendsList;
-    }
-
-    private void pushRandomFriendships(String uid){
-        FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference dbRef = database.getReference("friends/");
-        dbRef.child(uid).setValue(getRandomFriendship());
     }
 
     @SuppressWarnings("StatementWithEmptyBody")
@@ -461,7 +433,7 @@ public class MainActivity extends AppCompatActivity
             }
 
             profilePicture = (ImageView) headerView.findViewById(R.id.imageViewProfilePicture);
-            changeProfilePhoto(headerView, profilePicture);
+            setProfilePhoto(headerView, profilePicture);
         }
 
         //Spinner for search
@@ -474,11 +446,7 @@ public class MainActivity extends AppCompatActivity
         spinner.setAdapter(adapter);
     }
 
-    private void changeProfilePhoto(View headerView, final ImageView iv) {
-        //TODO: Save file app folder, load that file first then download.
-        Uri photoUrl = FirebaseAuth.getInstance().getCurrentUser().getPhotoUrl();
-        Log.d(TAG, "MainActivity:changeUI: photoUrl=" + photoUrl);
-
+    private void setProfilePhoto(View headerView, final ImageView iv) {
         try {
             localFileProfileImage = File.createTempFile("profileImage",".jpg");
             Log.d(TAG,"localFile.getAbsolutePath()" + localFileProfileImage.getAbsolutePath());
@@ -495,6 +463,7 @@ public class MainActivity extends AppCompatActivity
                     Log.d(TAG,"Bitmap is NOT null");
                     bitmap = BitmapManipulation.getCroppedBitmap(bitmap);
                     iv.setImageBitmap(bitmap);
+                    bitmap = null;
                 }else{
                     Log.d(TAG,"Bitmap is null");
                 }
@@ -575,7 +544,7 @@ public class MainActivity extends AppCompatActivity
 
                 for (Landmark landmark: mapMarkersLandmarks.keySet()) {
                     mMarker = mapMarkersLandmarks.get(landmark);
-                    float distance = BackgroundService.distFrom((float)lat,(float)lon, (float)mMarker.getPosition().latitude, (float)mMarker.getPosition().longitude);
+                    float distance = BackgroundService.distanceBetween((float)lat,(float)lon, (float)mMarker.getPosition().latitude, (float)mMarker.getPosition().longitude);
                     mMarker.setVisible(distance <= q_distance);
                 }
                 break;
@@ -648,12 +617,12 @@ public class MainActivity extends AppCompatActivity
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng point) {
-                Toast.makeText(getApplicationContext(), point.toString(), Toast.LENGTH_SHORT).show();
+                //Toast.makeText(getApplicationContext(), point.toString(), Toast.LENGTH_SHORT).show();
             }
         });
 
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
+            // Consider calling
             //    ActivityCompat#requestPermissions
             // here to request the missing permissions, and then overriding
             //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
@@ -665,58 +634,14 @@ public class MainActivity extends AppCompatActivity
         }
         mMap.setMyLocationEnabled(true);
 
-        //TODO: Make this better
-        int height = 50;
-        int width = 50;
-        BitmapDrawable bitmapdraw=(BitmapDrawable)getResources().getDrawable(R.drawable.obama);
-        Bitmap b=bitmapdraw.getBitmap();
-        final Bitmap smallMarker = Bitmap.createScaledBitmap(b, width, height, false);
-
         if (mMap != null) {
             mMap.setOnMyLocationChangeListener(new GoogleMap.OnMyLocationChangeListener() {
                 @Override
                 public void onMyLocationChange(Location arg0) {
-                    //mMap.addMarker(new MarkerOptions().position(new LatLng(arg0.getLatitude(), arg0.getLongitude())).title("It's Me!"));
-
                     myLocation = arg0;
-
-                    //addMarkers(arg0.getLatitude(),arg0.getLongitude(),"I","", smallMarker, false, MARKER_USER);
-
-                    //>This was moved to BackgroundService
-                    //DatabaseReference users = FirebaseDatabase.getInstance().getReference("users");
-                    //users.child(loggedUser.getUid()).child("lat").setValue(arg0.getLatitude());
-                    //users.child(loggedUser.getUid()).child("lon").setValue(arg0.getLongitude());
                 }
             });
         }
-        getFriendsUidFromServer();
-        Runnable r = new Runnable() {
-            @Override
-            public void run() {
-                loadLandmarksFromServer();
-            }
-        };
-        Thread loadLandmarksFromServerThread = new Thread(r);
-        loadLandmarksFromServerThread.start();
-
-        Runnable r2 = new Runnable() {
-            @Override
-            public void run() {
-                while(pauseWaitingForFriendsList){
-                    synchronized (this) {
-                        try {
-                            wait(100);
-                            Log.d(TAG,"Cekam 100ms");
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-                loadAllPlayersFromServer();
-            }
-        };
-        Thread loadAllPlayersFromServerThread = new Thread(r2);
-        loadAllPlayersFromServerThread.start();
     }
 
     private void loadLandmarksFromServer() {
@@ -772,10 +697,9 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
                 if(settingsShowPlayers){
-                    Log.d(TAG,"TIMESTAMP.values: " + ServerValue.TIMESTAMP.values());
                     //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
                     final User user = dataSnapshot.getValue(User.class);
-                    Log.d(TAG, "onChildAdded:" + user.firstName + " uid:" + user.uid);
+                    //Log.d(TAG, "onChildAdded:" + user.firstName + " uid:" + user.uid);
 
                     Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, "", null, false, user.uid);
                     mapUseridMarker.put(user.uid, marker);
@@ -793,10 +717,10 @@ public class MainActivity extends AppCompatActivity
                 mMarker = mapUseridMarker.get(user.uid);
 
                 if(mMarker!=null) {
-                    Log.d(TAG,"Brisem marker");
+                    //Log.d(TAG,"Brisem marker");
                     mMarker.setPosition(new LatLng(user.lat, user.lon));
                 }else{
-                    Log.d(TAG,"Ne brisem marker");
+                    //Log.d(TAG,"Ne brisem marker");
                 }
 
             }

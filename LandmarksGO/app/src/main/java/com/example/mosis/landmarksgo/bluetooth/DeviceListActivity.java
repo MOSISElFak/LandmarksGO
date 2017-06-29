@@ -107,7 +107,7 @@ public class DeviceListActivity extends Activity {
 		if (pairedDevices.size() > 0) {
 			//tvDeviceListPairedDeviceTitle.setVisibility(View.VISIBLE);
 			for (BluetoothDevice device : pairedDevices) {
-				unpairDevice(device); //TODO: Dirty fix because app sometimes crashes when connecting to a paired device.
+				unpairDevice(device); //Dirty fix because app sometimes crashes when connecting to a paired device.
 				//pairedDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
 			}
 		} else {

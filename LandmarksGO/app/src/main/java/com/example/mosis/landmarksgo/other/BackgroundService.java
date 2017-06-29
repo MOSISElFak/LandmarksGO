@@ -8,18 +8,22 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.BitmapFactory;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
 import android.net.ConnectivityManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Vibrator;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.example.mosis.landmarksgo.MainActivity;
 import com.example.mosis.landmarksgo.R;
@@ -33,29 +37,30 @@ import java.net.UnknownHostException;
 import static com.example.mosis.landmarksgo.MainActivity.friendsMarker;
 import static com.example.mosis.landmarksgo.MainActivity.landmarksMarker;
 
-//TODO: Implement LocationListener and upload user location to server
 public class BackgroundService extends Service implements LocationListener {
     private static final String TAG = "BackgroundService";
+    private static final long TIME_BETWEEN_NOTIFICATIONS = 60L;
+    private static final int NOTIFY_DISTANCE = 500000;   //TODO: Change this //how many meters should be between friend/landmark and current user in order to notify user
     private static boolean serviceRunning;
     private LocationManager locationManager;
     private String provider;
     public static Double currentLat = null;
     public static Double currentLon = null;
 
-    private int settingsGpsRefreshTime;
     private String loggedUserUid;
+    private Long timeLastNotification = 0L;
 
     public BackgroundService() {
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
     @Override
     public void onCreate() {
+        super.onCreate();
         Log.d(TAG, "BackgroundService onCreate started");
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -64,18 +69,17 @@ public class BackgroundService extends Service implements LocationListener {
         Log.d(TAG,"Location provider is selected: " + provider);
 
         Log.d(TAG,"BackgroundService onCreate ended");
-        super.onCreate();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG,"BackgroundService onStartCommand started");
-        settingsGpsRefreshTime = intent.getIntExtra("settingsGpsRefreshTime",1);
+        int settingsGpsRefreshTime = intent.getIntExtra("settingsGpsRefreshTime", 1);
         loggedUserUid = intent.getStringExtra("loggedUserUid");
 
-        locationManager.requestLocationUpdates(provider, settingsGpsRefreshTime*1000, 0, this); //Actual time to get a new location is a little big higher- 3s instead of 1, 6s instead 5, 12s instead 10
+        locationManager.requestLocationUpdates(provider, settingsGpsRefreshTime *1000, 0, this); //Actual time to get a new location is a little big higher- 3s instead of 1, 6s instead 5, 12s instead 10
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
+            // Consider calling
             //    ActivityCompat#requestPermissions
             // here to request the missing permissions, and then overriding
             //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
@@ -101,6 +105,7 @@ public class BackgroundService extends Service implements LocationListener {
     @Override
     public void onLocationChanged(Location location) {
         if(isInternetAvailable() && isNetworkConnected()){
+            System.gc();    //force garbage collector
             double myNewLat, myNewLon;
             currentLat = location.getLatitude();
             currentLon = location.getLongitude();
@@ -116,42 +121,42 @@ public class BackgroundService extends Service implements LocationListener {
             //friendsMarker is from the MainActivity
             for (String key: friendsMarker.keySet()) {
                 Marker marker = friendsMarker.get(key);
-                Float distanceFromMarker = distFrom((float)myNewLat,(float)myNewLon,(float)marker.getPosition().latitude, (float)marker.getPosition().longitude);
-                if(distanceFromMarker < 100000){ //TODO: Change this
-                    showNotification("The friend is nearby", marker.getTitle() + " is " + Math.round(distanceFromMarker) + " meters away from you!", false);
+                Float distanceFromMarker = distanceBetween((float)myNewLat,(float)myNewLon,(float)marker.getPosition().latitude, (float)marker.getPosition().longitude);
+                if(distanceFromMarker < NOTIFY_DISTANCE){
+                    showNotification(1, marker.getTitle() + " is " + Math.round(distanceFromMarker) + " meters away from you!");
+                }else{
+                    deleteNotification(this,1);
                 }
-                Log.d(TAG,"Iz servisa citam friendsMarker: " + key + " " + marker.getPosition() + " " + marker.getTitle() + " distance: " + distanceFromMarker);
             }
 
             //landmarksMarker is from the MainActivity
             for (String key: landmarksMarker.keySet()) {
                 Marker marker = landmarksMarker.get(key);
-                Float distanceFromMarker = distFrom((float)myNewLat,(float)myNewLon,(float)marker.getPosition().latitude, (float)marker.getPosition().longitude);
-                if(distanceFromMarker < 100000){ //TODO: Change this
-                    showNotification("The landmark is nearby", marker.getTitle() + " is " + Math.round(distanceFromMarker) + " meters away from you!", true);
+                Float distanceFromMarker = distanceBetween((float)myNewLat,(float)myNewLon,(float)marker.getPosition().latitude, (float)marker.getPosition().longitude);
+                if(distanceFromMarker < NOTIFY_DISTANCE){
+                    showNotification(2,marker.getTitle() + " is " + Math.round(distanceFromMarker) + " meters away from you!");
+                }else{
+                    deleteNotification(this,2);
                 }
-                Log.d(TAG,"Iz servisa citam landmarksMarker: " + key + " " + marker.getPosition() + " " + marker.getTitle() + " distance: " + distanceFromMarker);
             }
         }
     }
 
     //Different Id's will show up as different notifications
-    private int mNotificationId = 1;
+    private int mNotificationId;
     //Some things we only have to set the first time.
-    private boolean firstTime = true;
-    int i=0;
+    private boolean firstNotification = true;
     NotificationCompat.Builder mBuilder = null;
-    private void showNotification(String title, String text, boolean landmark) {
+    private void showNotification(int uid,String text) {
+        vibrationAndSoundNotification();
 
+        mNotificationId = uid;
         NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if(firstTime){
-            firstTime=false;
-
+        if(firstNotification){
+            firstNotification = false;
             mBuilder = new NotificationCompat.Builder(this)
-                                .setContentTitle(title)
-                                .setDefaults(Notification.DEFAULT_SOUND)
-                                .setDefaults(Notification.DEFAULT_VIBRATE)
-                                .setOnlyAlertOnce(true);
+                                .setOnlyAlertOnce(true)
+                                .setPriority(Notification.PRIORITY_DEFAULT);
 
             // Creates an explicit intent for an Activity in your app
             Intent resultIntent = new Intent(this, MainActivity.class);
@@ -166,18 +171,47 @@ public class BackgroundService extends Service implements LocationListener {
             PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
             mBuilder.setContentIntent(resultPendingIntent);
         }
-        if(landmark){
+
+        if(uid==2){//landmark
             mBuilder
-                    .setLargeIcon(BitmapFactory.decodeResource(this.getResources(), R.drawable.icon))
-                    .setSmallIcon(R.drawable.icon);
-        }else{
+                    .setSmallIcon(R.drawable.icon)
+                    .setContentTitle("The landmark is nearby");
+        }else{//friend
             mBuilder
-                    .setLargeIcon(BitmapFactory.decodeResource(this.getResources(), R.drawable.person_friend))
-                    .setSmallIcon(R.drawable.icon);
+                    .setSmallIcon(R.drawable.person_friend)
+                    .setContentTitle("The friend is nearby");
         }
 
         mBuilder.setContentText(text);
         mNotificationManager.notify(mNotificationId, mBuilder.build());
+        System.gc(); //force garbage collector
+    }
+
+    private void vibrationAndSoundNotification() {
+        Long time = System.currentTimeMillis()/1000;
+
+        if(time-timeLastNotification>TIME_BETWEEN_NOTIFICATIONS){//notify user only every TIME_BETWEEN_NOTIFICATIONS seconds
+            timeLastNotification = time;
+
+            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            v.vibrate(500);
+
+            try {
+                Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
+                r.play();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+
+    }
+
+    public static void deleteNotification(Context ctx, int notifyId) {
+        String ns = Context.NOTIFICATION_SERVICE;
+        NotificationManager nMgr = (NotificationManager) ctx.getSystemService(ns);
+        nMgr.cancel(notifyId);
     }
 
     @Override
@@ -195,7 +229,7 @@ public class BackgroundService extends Service implements LocationListener {
         Log.d(TAG,"Location provider is disabled: " + provider);
     }
 
-    public static float distFrom(float lat1, float lng1, float lat2, float lng2) {
+    public static float distanceBetween(float lat1, float lng1, float lat2, float lng2) {
         double earthRadius = 6371000; //meters
         double dLat = Math.toRadians(lat2-lat1);
         double dLng = Math.toRadians(lng2-lng1);
@@ -218,7 +252,7 @@ public class BackgroundService extends Service implements LocationListener {
                 InetAddress address = InetAddress.getByName("landmarkgo-d1a7c.firebaseio.com");
                 return !address.equals("");
             } catch (UnknownHostException e) {
-                // Log error
+                Toast.makeText(this, "Internet connection not available.", Toast.LENGTH_SHORT).show();
             }
             return false;
     }

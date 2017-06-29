@@ -64,7 +64,7 @@ public class PlayerInfo extends Activity {
         }).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception exception) {
-                //TODO: Can't display this, maybe user doesn't have a profile photo
+                //Can't display this, maybe user doesn't have a profile photo
             }
         });
 

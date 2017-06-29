@@ -45,7 +45,7 @@ public class CustomAdapter extends ArrayAdapter<DataModel> implements View.OnCli
         switch (v.getId())
         {
             case R.id.imageViewUserPhoto:
-                //TODO: this doesn't work
+                //this doesn't work
                 //Snackbar.make(v, "Release date " +dataModel.getFeature(), Snackbar.LENGTH_LONG).setAction("No action", null).show();
                 Log.d("TEST","You clicked on user photo." + dataModel.getName());
                 break;

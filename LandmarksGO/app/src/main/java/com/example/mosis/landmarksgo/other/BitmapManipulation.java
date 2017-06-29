@@ -59,6 +59,7 @@ public class BitmapManipulation {
         canvas.drawBitmap(bitmap, rect, rect, paint);
         //Bitmap _bmp = Bitmap.createScaledBitmap(output, 60, 60, false);
         //return _bmp;
+        bitmap = null;
         return output;
     }
 

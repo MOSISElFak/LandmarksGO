@@ -8,7 +8,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.AdapterView;
@@ -107,7 +106,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
 
         work_check = (CheckBox) findViewById(R.id.workback);
         players_check = (CheckBox) findViewById(R.id.showplayers);
-        friends_check = (CheckBox) findViewById(R.id.showfriends);
+        //friends_check = (CheckBox) findViewById(R.id.showfriends);
 
         gpsSpinner = (Spinner) findViewById(R.id.gps_spinner);
         final ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
@@ -131,12 +130,12 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 User u = dataSnapshot.getValue(User.class);
-                friends_status = u.showfriends;
+                //friends_status = u.showfriends;
                 players_status = u.showplayers;
                 workback_status = u.workback;
                 gpsRefresh = u.gpsrefresh;
 
-                friends_check.setChecked(friends_status);
+                //friends_check.setChecked(friends_status);
                 players_check.setChecked(players_status);
                 work_check.setChecked(workback_status);
                 int pos = adapter.getPosition(gpsRefresh.toString());
@@ -155,12 +154,12 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
                 progressBar.setVisibility(View.VISIBLE);
                 database.getReference("users").child(user.getUid()).child("workback").setValue(work_check.isChecked());
                 database.getReference("users").child(user.getUid()).child("showplayers").setValue(players_check.isChecked());
-                database.getReference("users").child(user.getUid()).child("showfriends").setValue(friends_check.isChecked());
+                //database.getReference("users").child(user.getUid()).child("showfriends").setValue(friends_check.isChecked());
                 database.getReference("users").child(user.getUid()).child("gpsrefresh").setValue(gpsRefresh);
                 progressBar.setVisibility(View.GONE);
                 Toast.makeText(SettingsActivity.this, "Settings saved", Toast.LENGTH_SHORT).show();
 
-                Snackbar.make(findViewById(android.R.id.content), "Please exit the app in order to apply the settings about showing players or friends", Snackbar.LENGTH_LONG).show();
+                //Snackbar.make(findViewById(android.R.id.content), "Please exit the app in order to apply the settings about showing players or friends", Snackbar.LENGTH_LONG).show();
             }
         });
 

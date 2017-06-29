@@ -89,8 +89,8 @@ public class HighScore extends AppCompatActivity {
                         public void onSuccess(byte[] bytes) {
                             Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
                             bitmap = BitmapManipulation.getCroppedBitmap(bitmap);
-                            //dataModels.add(new DataModel(postSnapshot.child("name").getValue(String.class),postSnapshot.child("points").getValue(Integer.class),bitmap, howManyTopPlayers-(number++),0));
                             dataModels.add(new DataModel(postSnapshot.child("name").getValue(String.class),postSnapshot.child("points").getValue(Integer.class),bitmap, number,0));
+                            bitmap = null;
 
                             Collections.sort(dataModels, new Comparator<DataModel>(){
                                 public int compare(DataModel obj1, DataModel obj2)
@@ -106,8 +106,8 @@ public class HighScore extends AppCompatActivity {
                         public void onFailure(@NonNull Exception exception) {
                             //user exists, but doesn't have profile photo
                             Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.empty_profile_picture);
-                            //dataModels.add(new DataModel(postSnapshot.child("name").getValue(String.class),postSnapshot.child("points").getValue(Integer.class),bitmap, howManyTopPlayers-(number++),0));
-                            dataModels.add(new DataModel(postSnapshot.child("name").getValue(String.class),postSnapshot.child("points").getValue(Integer.class),bitmap, number,0)); //TODO: can't make it to show correct number
+                            dataModels.add(new DataModel(postSnapshot.child("name").getValue(String.class),postSnapshot.child("points").getValue(Integer.class),bitmap, number,0));
+                            bitmap = null;
 
                             Collections.sort(dataModels, new Comparator<DataModel>(){
                                 public int compare(DataModel obj1, DataModel obj2)

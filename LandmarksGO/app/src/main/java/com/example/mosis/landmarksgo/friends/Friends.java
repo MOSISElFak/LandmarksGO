@@ -178,6 +178,7 @@ public class Friends extends AppCompatActivity {
                                                 adapter.notifyDataSetChanged();
 
                                                 pb.setVisibility(View.GONE);
+                                                bitmap = null;
                                             }
                                             @Override
                                             public void onCancelled(DatabaseError databaseError) {
@@ -193,12 +194,14 @@ public class Friends extends AppCompatActivity {
                                         Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.empty_profile_picture);
                                         dataModels.add(new DataModel(user.firstName + " " + user.lastName + "\n" + user.uid,0,bitmap,5,Integer.parseInt(friendNumber)));
                                         adapter.notifyDataSetChanged();
+                                        bitmap = null;
                                     }
                                 });
                             }else{
                                 Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.empty_profile_picture);
                                 dataModels.add(new DataModel("fake user\n" + friendUid,0,bitmap,5,Integer.parseInt(friendNumber)));
                                 adapter.notifyDataSetChanged();
+                                bitmap = null;
                             }
                         }
 
@@ -358,7 +361,7 @@ public class Friends extends AppCompatActivity {
                                             }
                                         })
                                         .setIcon(android.R.drawable.ic_dialog_alert)
-                                        .show();    //TODO: puca ovde, stavi u try catch
+                                        .show();
                                 }
                             });
                     }
