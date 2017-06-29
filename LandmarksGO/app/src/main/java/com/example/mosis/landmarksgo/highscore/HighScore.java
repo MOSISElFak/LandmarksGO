@@ -51,33 +51,6 @@ public class HighScore extends AppCompatActivity {
 
         progressBar = (ProgressBar) findViewById(R.id.progressBarHighscore);
 
-        /*
-        database = FirebaseDatabase.getInstance().getReference().child("scoreTable");
-        rankList = (ListView) findViewById(R.id.rank_list);
-
-        final ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, usernames);
-        rankList.setAdapter(arrayAdapter);
-
-        Query topUsers = database.orderByChild("points").limitToLast(10);
-        topUsers.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                usernames.clear();
-                for (DataSnapshot postSnapshot: dataSnapshot.getChildren()) {
-                    String value = postSnapshot.child("name").getValue(String.class);
-                    value += ": " + postSnapshot.child("points").getValue(Integer.class).toString() + " points";
-                    usernames.add(0,value);
-                }
-                arrayAdapter.notifyDataSetChanged();
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Toast.makeText(HighScore.this, databaseError.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
-        */
-
         listView=(ListView)findViewById(R.id.rank_list);
 
         dataModels= new ArrayList<>();
@@ -93,13 +66,7 @@ public class HighScore extends AppCompatActivity {
             }
         });
 
-        //>for better UX, show an empty list because loading from Server can take a few seconds, or there is no Internet connection
-        for(int i=0;i<howManyTopPlayers;i++){
-            dataModels.add(new DataModel("",0,null, ++i,0));
-        }
         emptyList=true;
-        adapter.notifyDataSetChanged();
-        //<
 
         database = FirebaseDatabase.getInstance().getReference().child("scoreTable");
         rankList = (ListView) findViewById(R.id.rank_list);
@@ -108,14 +75,11 @@ public class HighScore extends AppCompatActivity {
         topUsers.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                if(emptyList){
-                    emptyList=false;
+                //if(emptyList){
+                    //emptyList=false;
                     adapter.clear();
-                    progressBar.setVisibility(View.INVISIBLE);
-                }
+                //}
                 for (final DataSnapshot postSnapshot: dataSnapshot.getChildren()) {
-                    //Log.d("KOMA","key u highscore:" + postSnapshot.getKey());
-
                     StorageReference storage = FirebaseStorage.getInstance().getReference().child("profile_images/" + postSnapshot.getKey() + ".jpg");
                     final long MEMORY = 10 * 1024 * 1024;
 
@@ -155,9 +119,8 @@ public class HighScore extends AppCompatActivity {
                             adapter.notifyDataSetChanged();
                         }
                     });
-
                 }
-                //adapter.notifyDataSetChanged();
+                progressBar.setVisibility(View.INVISIBLE);
             }
 
             @Override
@@ -165,5 +128,10 @@ public class HighScore extends AppCompatActivity {
                 Toast.makeText(HighScore.this, databaseError.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
     }
 }
