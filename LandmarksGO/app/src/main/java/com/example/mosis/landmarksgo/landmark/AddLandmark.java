@@ -15,10 +15,13 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import static com.example.mosis.landmarksgo.other.BackgroundService.currentLat;
+import static com.example.mosis.landmarksgo.other.BackgroundService.currentLon;
+
 public class AddLandmark extends AppCompatActivity implements AdapterView.OnItemSelectedListener {
 
     private Spinner object_type;
-    private Button btnPickFromMap, btnAdd, btnCancel;
+    private Button btnAdd, btnCancel;
     private EditText editName, editDesc, editLon, editLat;
 
     private FirebaseDatabase database;
@@ -45,7 +48,6 @@ public class AddLandmark extends AppCompatActivity implements AdapterView.OnItem
         object_type.setAdapter(adapter);
         object_type.setOnItemSelectedListener(this);
 
-        btnPickFromMap = (Button) findViewById(R.id.pick_from_map);
         btnAdd = (Button) findViewById(R.id.add_landmark);
         btnCancel = (Button) findViewById(R.id.cancel_landmark);
 
@@ -53,13 +55,6 @@ public class AddLandmark extends AppCompatActivity implements AdapterView.OnItem
         editDesc = (EditText) findViewById(R.id.landmark_desc);
         editLat = (EditText) findViewById(R.id.landmark_lat);
         editLon = (EditText) findViewById(R.id.landmark_lon);
-
-        btnPickFromMap.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                //TODO da mu otvori mapu gde ce da izabere kordinate
-            }
-        });
 
         btnCancel.setOnClickListener(new View.OnClickListener(){
             @Override
@@ -71,19 +66,59 @@ public class AddLandmark extends AppCompatActivity implements AdapterView.OnItem
         btnAdd.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
+                getGpsCoordinates();
+
                 String name = editName.getText().toString();
                 String desc = editDesc.getText().toString();
-                Double lon = Double.parseDouble(editLon.getText().toString());
-                Double lat = Double.parseDouble(editLat.getText().toString());
+                Double lon, lat;
+                try {
+                    lon = Double.parseDouble(editLon.getText().toString());
+                    lat = Double.parseDouble(editLat.getText().toString());
+                }catch (Throwable t){
+                    lon = null;
+                    lat = null;
+                }
 
-                Landmark landmark = new Landmark(name, desc, type, lon, lat,  FirebaseAuth.getInstance().getCurrentUser().getUid());
+                if(validateInput(name, desc, lon, lat)){
+                    Landmark landmark = new Landmark(name, desc, type, lon, lat,  FirebaseAuth.getInstance().getCurrentUser().getUid());
 
-                // dodaj landmark u bazu
-                root.push().setValue(landmark);
-                Toast.makeText(AddLandmark.this, "Landmark " + name + " has been added!", Toast.LENGTH_SHORT).show();
-                finish();
+                    // dodaj landmark u bazu
+                    root.push().setValue(landmark);
+                    Toast.makeText(AddLandmark.this, "Landmark " + name + " has been added!", Toast.LENGTH_SHORT).show();
+                    finish();
+                }else{
+                    Toast.makeText(AddLandmark.this,"Please check input fields",Toast.LENGTH_SHORT).show();
+                }
+
+
             }
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        getGpsCoordinates();
+    }
+
+    private void getGpsCoordinates() {
+        if(currentLat!=null && currentLon!=null){
+            editLat.setText(String.valueOf(currentLat));
+            editLon.setText(String.valueOf(currentLon));
+        }else{
+            Toast.makeText(this,"Please turn on GPS",Toast.LENGTH_SHORT).show();
+            editLat.setText("unknown");
+            editLon.setText("unknown");
+        }
+    }
+
+    private boolean validateInput(String name, String desc, Double lon, Double lat) {
+        if(!name.equals("") && !desc.equals("") && lon!=null && lat!=null){
+            return true;
+        }else{
+            return false;
+        }
     }
 
     @Override

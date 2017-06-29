@@ -39,6 +39,8 @@ public class BackgroundService extends Service implements LocationListener {
     private static boolean serviceRunning;
     private LocationManager locationManager;
     private String provider;
+    public static Double currentLat = null;
+    public static Double currentLon = null;
 
     private int settingsGpsRefreshTime;
     private String loggedUserUid;
@@ -100,8 +102,12 @@ public class BackgroundService extends Service implements LocationListener {
     public void onLocationChanged(Location location) {
         if(isInternetAvailable() && isNetworkConnected()){
             double myNewLat, myNewLon;
-            myNewLat=location.getLatitude();
-            myNewLon=location.getLongitude();
+            currentLat = location.getLatitude();
+            currentLon = location.getLongitude();
+
+            myNewLat = currentLat;
+            myNewLon = currentLon;
+
             Log.d(TAG,"New location: " + myNewLat + " " + myNewLon);
             DatabaseReference users = FirebaseDatabase.getInstance().getReference("users");
             users.child(loggedUserUid).child("lat").setValue(myNewLat);
