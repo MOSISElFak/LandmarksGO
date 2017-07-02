@@ -45,8 +45,10 @@ import static com.example.mosis.landmarksgo.MainActivity.mapMarkersLandmarks;
 public class BackgroundService extends Service implements LocationListener {
     private static final String TAG = "BackgroundService";
     private static final long TIME_BETWEEN_NOTIFICATIONS = 60L;
-    private static final int NOTIFY_DISTANCE = 500;   //TODO: Change this //how many meters should be between friend/landmark and current user in order to notify user
+    private static final int NOTIFY_DISTANCE = 500;
     private static final int VISIT_DISTANCE = 100;
+    private static final int ADD_POINTS_DEFAULT_LANDMARK = 10;
+    private static final int ADD_POINTS_USER_LANDMARK = 5;
 
     private static boolean serviceRunning;
 
@@ -153,18 +155,20 @@ public class BackgroundService extends Service implements LocationListener {
                 if(distanceFromMarker < NOTIFY_DISTANCE){
                     showNotification(1, marker.getTitle() + " is " + Math.round(distanceFromMarker) + " meters away from you!");
                 }else{
-                    deleteNotification(this,1);
+                    //deleteNotification(this,1);
                 }
             }
 
+            float minDistance = NOTIFY_DISTANCE;
+            Marker minDistanceMarker = null;
             //landmarksMarker is from the MainActivity
             for (String key: landmarksMarker.keySet()) {
                 Marker marker = landmarksMarker.get(key);
                 Float distanceFromMarker = distanceBetween((float)myNewLat,(float)myNewLon,(float)marker.getPosition().latitude, (float)marker.getPosition().longitude);
 
+                dbAdapter.open();
                 if (distanceFromMarker < VISIT_DISTANCE )
                 {
-                    dbAdapter.open();
                     if (dbAdapter.checkLandmark(key))
                         Log.d("SQLite", "Pronadjeno: " + key);
                     else {
@@ -172,22 +176,32 @@ public class BackgroundService extends Service implements LocationListener {
                         dbAdapter.insertVisitedLandmark(key);
                         for (Landmark landmark : mapMarkersLandmarks.keySet()) {
                             if (mapMarkersLandmarks.get(landmark) == marker) {
-                                if (landmark.uid.equalsIgnoreCase("admin"))
-                                    myPoints += 10;
-                                else if (!landmark.uid.equalsIgnoreCase(loggedUserUid))
-                                    myPoints += 5;
+                                if (landmark.uid.equalsIgnoreCase("admin")){
+                                    Toast.makeText(BackgroundService.this,"Adding " + ADD_POINTS_DEFAULT_LANDMARK + " points!",Toast.LENGTH_SHORT).show();
+                                    myPoints += ADD_POINTS_DEFAULT_LANDMARK;
+                                }
+                                else if (!landmark.uid.equalsIgnoreCase(loggedUserUid)){
+                                    Toast.makeText(BackgroundService.this,"Adding " + ADD_POINTS_USER_LANDMARK + " points!",Toast.LENGTH_SHORT).show();
+                                    myPoints += ADD_POINTS_USER_LANDMARK;
+                                }
+
+
                                 database.getReference("scoreTable").child(loggedUserUid).child("points").setValue(myPoints);
                                 break;
                             }
                         }
                     }
-                    dbAdapter.close();
-                } // TODO dodaj mozda da ga ne smara za one koje je vec posetio
-                else if(distanceFromMarker < NOTIFY_DISTANCE){
-                    showNotification(2,marker.getTitle() + " is " + Math.round(distanceFromMarker) + " meters away from you!");
-                }else{
-                    deleteNotification(this,2);
                 }
+                else if(distanceFromMarker < NOTIFY_DISTANCE && !dbAdapter.checkLandmark(key)){
+                    if(distanceFromMarker<minDistance){
+                        minDistance = distanceFromMarker;
+                        minDistanceMarker = marker;
+                    }
+                }
+                dbAdapter.close();
+            }
+            if(minDistanceMarker!=null){
+                showNotification(2,minDistanceMarker.getTitle() + " is " + Math.round(minDistance) + " meters away from you!");
             }
         }
     }

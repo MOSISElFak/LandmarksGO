@@ -70,6 +70,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import static com.example.mosis.landmarksgo.R.id.map;
+import static com.example.mosis.landmarksgo.other.BackgroundService.currentLat;
+import static com.example.mosis.landmarksgo.other.BackgroundService.currentLon;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, AdapterView.OnItemSelectedListener, OnMapReadyCallback {
@@ -83,7 +85,7 @@ public class MainActivity extends AppCompatActivity
     private NavigationView navigationView;
     private SearchView search;
 
-    private GoogleMap mMap;
+    private GoogleMap mMap = null;
     public static HashMap<Landmark, Marker> mapMarkersLandmarks = new HashMap<Landmark, Marker>();
     private HashMap<String, Marker> mapUseridMarker = new HashMap<String, Marker>();
     private HashMap<Marker, User> mapMarkerUser = new HashMap<Marker, User>();
@@ -91,7 +93,7 @@ public class MainActivity extends AppCompatActivity
     private int spinnerSelectedSearchOption;
     static File localFileProfileImage = null;
 
-    private Location myLocation = null;
+    //private Location myLocation = null;
     private Circle distanceCircle;
 
     //public static final int MARKER_LANDMARK = 1;
@@ -172,7 +174,7 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "onPause");
 
         if(!settingsBackgroundService && isMyServiceRunning(BackgroundService.class)){
-            Toast.makeText(this,"Stopping background service",Toast.LENGTH_SHORT).show();
+            //Toast.makeText(this,"Stopping background service",Toast.LENGTH_SHORT).show();
             stopService(backgroundService);
         }
 
@@ -210,12 +212,24 @@ public class MainActivity extends AppCompatActivity
                         synchronized (this) {
                             try {
                                 wait(100);
-                                Log.d(TAG,"Waiting 100ms");
+                                //Log.d(TAG,"Waiting 100ms");
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
                         }
                     }
+
+                    while(mMap==null){
+                        synchronized (this) {
+                            try {
+                                wait(100);
+                                //Log.d(TAG,"Waiting 100ms");
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+
                     readSettingsFromServer();   //loadAllPlayersFromServer() must be inside this function
                     loadLandmarksFromServer();
                 }
@@ -256,6 +270,9 @@ public class MainActivity extends AppCompatActivity
 
     private void readSettingsFromServer() {
         FirebaseDatabase database = FirebaseDatabase.getInstance();
+
+        updatePoints();
+
         database.getReference("users").child(loggedUser.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -263,6 +280,7 @@ public class MainActivity extends AppCompatActivity
                 settingsShowPlayers = u.showplayers;
                 settingsBackgroundService = u.workback;
                 settingsGpsRefreshTime = u.gpsrefresh;
+
 
                 if(settingsShowPlayers){
                     loadAllPlayersFromServer();
@@ -275,6 +293,9 @@ public class MainActivity extends AppCompatActivity
                 if(!isMyServiceRunning(BackgroundService.class)){
                     startService(backgroundService);
                 }
+
+                //TextView tv = (TextView) findViewById(R.id.textViewUserPoints);
+                //tv.setText(myPoints);
             }
 
             @Override
@@ -305,7 +326,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
+        //getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
 
@@ -432,10 +453,12 @@ public class MainActivity extends AppCompatActivity
             }
 
             Log.d(TAG, "MainActivity:changeUI: email=" + email);
+            /*
             if(email!=null){
-                TextView profileEmail = (TextView) headerView.findViewById(R.id.textViewProfileEmail);
+                TextView profileEmail = (TextView) headerView.findViewById(R.id.textViewProfilePoints);
                 profileEmail.setText(email);
             }
+            */
 
             profilePicture = (ImageView) headerView.findViewById(R.id.imageViewProfilePicture);
             setProfilePhoto(headerView, profilePicture);
@@ -542,8 +565,8 @@ public class MainActivity extends AppCompatActivity
                 }
                 break;
             case 1: // searching by distance
-                double lat = myLocation.getLatitude();
-                double lon = myLocation.getLongitude();
+                double lat = currentLat;
+                double lon = currentLon;
                 float q_distance;
                 try {
                     q_distance = Float.parseFloat(query);
@@ -556,7 +579,7 @@ public class MainActivity extends AppCompatActivity
                         .center(new LatLng(lat, lon))
                         .radius(q_distance)
                         .strokeWidth(3)
-                        .fillColor(Color.CYAN));
+                        .fillColor(Color.argb(128,33,155,243)));
 
                 for (Landmark landmark: mapMarkersLandmarks.keySet()) {
                     mMarker = mapMarkersLandmarks.get(landmark);
@@ -654,7 +677,7 @@ public class MainActivity extends AppCompatActivity
             mMap.setOnMyLocationChangeListener(new GoogleMap.OnMyLocationChangeListener() {
                 @Override
                 public void onMyLocationChange(Location arg0) {
-                    myLocation = arg0;
+                    //myLocation = arg0;
                 }
             });
         }
@@ -744,7 +767,6 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onChildRemoved(DataSnapshot dataSnapshot) {
                 Log.d(TAG, "onChildRemoved:" + dataSnapshot.getKey());
-                // TODO: moze da se izbrise taj marker
             }
 
             @Override
@@ -818,5 +840,24 @@ public class MainActivity extends AppCompatActivity
             }
         }
         return false;
+    }
+
+    public void updatePoints(){
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        database.getReference("scoreTable").child(loggedUser.getUid()).child("points").addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                int points = dataSnapshot.getValue(Integer.class);
+                TextView tv = (TextView) headerView.findViewById(R.id.textViewProfilePoints);
+                tv.setText(String.valueOf(points));
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+
     }
 }

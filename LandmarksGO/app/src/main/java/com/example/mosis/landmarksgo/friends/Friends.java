@@ -60,6 +60,7 @@ import java.util.List;
 public class Friends extends AppCompatActivity {
     public static final String FRIEND_REQUEST_CODE = "MONUMENTS_GO_FRIEND_REQUEST_";
     private static final int BT_DISCOVERABLE_TIME = 120;
+    private static final int ADD_POINTS_NEW_FRIEND = 5;
     private static ArrayList<DataModel> dataModels;
     private  CustomAdapter adapter;
     private LandmarksDBAdapter dbAdapter;
@@ -106,6 +107,10 @@ public class Friends extends AppCompatActivity {
                             public void onClick(DialogInterface dialog, int which) {
                                 FirebaseDatabase database = FirebaseDatabase.getInstance();
                                 final DatabaseReference dbRef = database.getReference("friends/" + user.getUid());
+
+                                Toast.makeText(Friends.this,"Removing " + ADD_POINTS_NEW_FRIEND + " points!",Toast.LENGTH_SHORT).show();
+                                BackgroundService.myPoints -= ADD_POINTS_NEW_FRIEND;
+                                FirebaseDatabase.getInstance().getReference("scoreTable").child(user.getUid()).child("points").setValue(BackgroundService.myPoints);
 
                                 //dbRef.child(String.valueOf(position)).setValue("null");
                                 dbRef.child(String.valueOf(dataModel.getFriendNumberOnServer())).removeValue();
@@ -347,6 +352,7 @@ public class Friends extends AppCompatActivity {
                                                             DatabaseReference dbFriends = database.getReference("friends/");
                                                             dbFriends.child(myUid).setValue(friendsList);
 
+                                                            /*
                                                             dbAdapter.open();
                                                             if (!dbAdapter.checkFriendship(friendsUid))
                                                             {
@@ -355,6 +361,11 @@ public class Friends extends AppCompatActivity {
                                                                 FirebaseDatabase.getInstance().getReference("scoreTable").child(myUid).child("points").setValue(BackgroundService.myPoints);
                                                             }
                                                             dbAdapter.close();
+                                                            */
+
+                                                            Toast.makeText(Friends.this,"Adding " + ADD_POINTS_NEW_FRIEND + " points!",Toast.LENGTH_SHORT).show();
+                                                            BackgroundService.myPoints += ADD_POINTS_NEW_FRIEND;
+                                                            FirebaseDatabase.getInstance().getReference("scoreTable").child(myUid).child("points").setValue(BackgroundService.myPoints);
 
                                                             Snackbar.make(findViewById(android.R.id.content), "You are now friends with " + friendsUid, Snackbar.LENGTH_LONG).show();
                                                             adapter.clear();

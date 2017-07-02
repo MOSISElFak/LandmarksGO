@@ -30,10 +30,11 @@
         android:layout_gravity="center"/>
 
     <TextView
-        android:id="@+id/textViewProfileEmail"
+        android:id="@+id/textViewProfilePoints"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="android.studio@android.com"
-        android:layout_gravity="center"/>
+        android:text=""
+        android:layout_gravity="center"
+        android:textSize="33dp"/>
 
 </LinearLayout>

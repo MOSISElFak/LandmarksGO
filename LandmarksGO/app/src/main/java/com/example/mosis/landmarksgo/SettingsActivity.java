@@ -21,7 +21,6 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.example.mosis.landmarksgo.authentication.LoginActivity;
-import com.example.mosis.landmarksgo.authentication.SignupActivity;
 import com.example.mosis.landmarksgo.authentication.User;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -175,25 +174,31 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         changeEmail.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                progressBar.setVisibility(View.VISIBLE);
-                if (user != null && !newEmail.getText().toString().trim().equals("")) {
-                    user.updateEmail(newEmail.getText().toString().trim())
-                            .addOnCompleteListener(new OnCompleteListener<Void>() {
-                                @Override
-                                public void onComplete(@NonNull Task<Void> task) {
-                                    if (task.isSuccessful()) {
-                                        Toast.makeText(SettingsActivity.this, "Email address is updated. Please sign in with new email!", Toast.LENGTH_LONG).show();
-                                        signOut();
-                                        progressBar.setVisibility(View.GONE);
-                                    } else {
-                                        Toast.makeText(SettingsActivity.this, "Failed to update email!", Toast.LENGTH_LONG).show();
-                                        progressBar.setVisibility(View.GONE);
+                try {
+                    progressBar.setVisibility(View.VISIBLE);
+                    if (user != null && !newEmail.getText().toString().trim().equals("")) {
+                        user.updateEmail(newEmail.getText().toString().trim())
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful()) {
+                                            Toast.makeText(SettingsActivity.this, "Email address is updated. Please sign in with new email!", Toast.LENGTH_LONG).show();
+                                            signOut();
+                                            progressBar.setVisibility(View.GONE);
+                                        } else {
+                                            Toast.makeText(SettingsActivity.this, "In order to change email you need to sing out and then sign in again :(", Toast.LENGTH_SHORT).show();
+                                            progressBar.setVisibility(View.GONE);
+                                            signOut();
+                                        }
                                     }
-                                }
-                            });
-                } else if (newEmail.getText().toString().trim().equals("")) {
-                    newEmail.setError("Enter email");
+                                });
+                    } else if (newEmail.getText().toString().trim().equals("")) {
+                        newEmail.setError("Enter email");
+                        progressBar.setVisibility(View.GONE);
+                    }
+                }catch (Throwable t){
                     progressBar.setVisibility(View.GONE);
+                    Toast.makeText(SettingsActivity.this, "Error, please try again.",Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -210,30 +215,37 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
         changePassword.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                progressBar.setVisibility(View.VISIBLE);
-                if (user != null && !newPassword.getText().toString().trim().equals("")) {
-                    if (newPassword.getText().toString().trim().length() < 6) {
-                        newPassword.setError("Password too short, enter minimum 6 characters");
-                        progressBar.setVisibility(View.GONE);
-                    } else {
-                        user.updatePassword(newPassword.getText().toString().trim())
-                                .addOnCompleteListener(new OnCompleteListener<Void>() {
-                                    @Override
-                                    public void onComplete(@NonNull Task<Void> task) {
-                                        if (task.isSuccessful()) {
-                                            Toast.makeText(SettingsActivity.this, "Password is updated, sign in with new password!", Toast.LENGTH_SHORT).show();
-                                            signOut();
-                                            progressBar.setVisibility(View.GONE);
-                                        } else {
-                                            Toast.makeText(SettingsActivity.this, "Failed to update password!", Toast.LENGTH_SHORT).show();
-                                            progressBar.setVisibility(View.GONE);
+                try {
+                    progressBar.setVisibility(View.VISIBLE);
+                    if (user != null && !newPassword.getText().toString().trim().equals("")) {
+                        if (newPassword.getText().toString().trim().length() < 6) {
+                            newPassword.setError("Password too short, enter minimum 6 characters");
+                            progressBar.setVisibility(View.GONE);
+                        } else {
+                            user.updatePassword(newPassword.getText().toString().trim())
+                                    .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                        @Override
+                                        public void onComplete(@NonNull Task<Void> task) {
+                                            if (task.isSuccessful()) {
+                                                Toast.makeText(SettingsActivity.this, "Password is updated, sign in with new password!", Toast.LENGTH_SHORT).show();
+                                                signOut();
+                                                progressBar.setVisibility(View.GONE);
+                                            } else {
+                                                Toast.makeText(SettingsActivity.this, "In order to change password you need to sing out and then sign in again :(", Toast.LENGTH_SHORT).show();
+                                                progressBar.setVisibility(View.GONE);
+                                                signOut();
+
+                                            }
                                         }
-                                    }
-                                });
+                                    });
+                        }
+                    } else if (newPassword.getText().toString().trim().equals("")) {
+                        newPassword.setError("Enter password");
+                        progressBar.setVisibility(View.GONE);
                     }
-                } else if (newPassword.getText().toString().trim().equals("")) {
-                    newPassword.setError("Enter password");
+                }catch (Throwable t){
                     progressBar.setVisibility(View.GONE);
+                    Toast.makeText(SettingsActivity.this, "Error, please try again.",Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -271,6 +283,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
             }
         });
 
+        /*
         btnRemoveUser.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -312,6 +325,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
                         .setNegativeButton("No", dialogClickListener).show();
             }
         });
+        */
 
         signOut.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -324,7 +338,7 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
             @Override
             public void onClick(View v) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(SettingsActivity.this);
-                builder.setMessage("App made by Koma & Ugre\nmail@outlook.com \nmail@gmail.com")
+                builder.setMessage("App made by Koma & Ugre\nivankoma@outlook.com \nugre94@gmail.com")
                         .setCancelable(false)
                         .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int id) {
@@ -376,11 +390,10 @@ public class SettingsActivity extends AppCompatActivity implements AdapterView.O
 
     private void onAccDelete(String userid)
     {
-        // Ovde se brisu svi njegovi podaci iz baze
+        //TODO: If you delete accounts, which you can't, you must also remove from other player's friend list.
         storage.delete();
         database.getReference("scoreTable").child(userid).removeValue();
         database.getReference("users").child(userid).removeValue();
-        // TODO izbrisi ga i iz prijateljskih veza kasnije
     }
 
     @Override
