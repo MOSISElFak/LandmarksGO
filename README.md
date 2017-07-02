@@ -27,3 +27,7 @@ LandmarksGO
 ![Settings](README_files/settings.png)
 
 ![Notification](README_files/notification.png)
+
+![Mockup](README_files/mockup.png)
+
+[Full-size mockup](https://realtimeboard.com/app/board/o9J_k0Cdrec=/)
