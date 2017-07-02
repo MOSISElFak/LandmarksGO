@@ -39,7 +39,9 @@ import com.example.mosis.landmarksgo.bluetooth.ChatService;
 import com.example.mosis.landmarksgo.bluetooth.DeviceListActivity;
 import com.example.mosis.landmarksgo.highscore.CustomAdapter;
 import com.example.mosis.landmarksgo.highscore.DataModel;
+import com.example.mosis.landmarksgo.other.BackgroundService;
 import com.example.mosis.landmarksgo.other.BitmapManipulation;
+import com.example.mosis.landmarksgo.other.LandmarksDBAdapter;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
@@ -60,6 +62,7 @@ public class Friends extends AppCompatActivity {
     private static final int BT_DISCOVERABLE_TIME = 120;
     private static ArrayList<DataModel> dataModels;
     private  CustomAdapter adapter;
+    private LandmarksDBAdapter dbAdapter;
     ProgressBar pb;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,6 +125,7 @@ public class Friends extends AppCompatActivity {
 
             }
         });
+        dbAdapter = new LandmarksDBAdapter(getApplicationContext());
 
         //search server for current user's friends
         getFriendsFromServer(dbRef, adapter);
@@ -342,6 +346,16 @@ public class Friends extends AppCompatActivity {
                                                             friendsList.add(friendsUid); //adding new friendship
                                                             DatabaseReference dbFriends = database.getReference("friends/");
                                                             dbFriends.child(myUid).setValue(friendsList);
+
+                                                            dbAdapter.open();
+                                                            if (!dbAdapter.checkFriendship(friendsUid))
+                                                            {
+                                                                dbAdapter.insertFriendship(friendsUid);
+                                                                BackgroundService.myPoints += 5;
+                                                                FirebaseDatabase.getInstance().getReference("scoreTable").child(myUid).child("points").setValue(BackgroundService.myPoints);
+                                                            }
+                                                            dbAdapter.close();
+
                                                             Snackbar.make(findViewById(android.R.id.content), "You are now friends with " + friendsUid, Snackbar.LENGTH_LONG).show();
                                                             adapter.clear();
                                                             getFriendsFromServer(dbRef, adapter);

@@ -27,27 +27,41 @@ import android.widget.Toast;
 
 import com.example.mosis.landmarksgo.MainActivity;
 import com.example.mosis.landmarksgo.R;
+import com.example.mosis.landmarksgo.landmark.Landmark;
 import com.google.android.gms.maps.model.Marker;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 import static com.example.mosis.landmarksgo.MainActivity.friendsMarker;
 import static com.example.mosis.landmarksgo.MainActivity.landmarksMarker;
+import static com.example.mosis.landmarksgo.MainActivity.mapMarkersLandmarks;
 
 public class BackgroundService extends Service implements LocationListener {
     private static final String TAG = "BackgroundService";
     private static final long TIME_BETWEEN_NOTIFICATIONS = 60L;
-    private static final int NOTIFY_DISTANCE = 500000;   //TODO: Change this //how many meters should be between friend/landmark and current user in order to notify user
+    private static final int NOTIFY_DISTANCE = 500;   //TODO: Change this //how many meters should be between friend/landmark and current user in order to notify user
+    private static final int VISIT_DISTANCE = 100;
+
     private static boolean serviceRunning;
+
     private LocationManager locationManager;
+    private LandmarksDBAdapter dbAdapter;
+    private FirebaseDatabase database;
+
     private String provider;
+
     public static Double currentLat = null;
     public static Double currentLon = null;
 
     private String loggedUserUid;
+    public static int myPoints = 0;
+
     private Long timeLastNotification = 0L;
 
     public BackgroundService() {
@@ -65,9 +79,11 @@ public class BackgroundService extends Service implements LocationListener {
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         Criteria criteria = new Criteria();
+        dbAdapter = new LandmarksDBAdapter(getApplicationContext());
+        database = FirebaseDatabase.getInstance();
         provider = locationManager.getBestProvider(criteria, false);
-        Log.d(TAG,"Location provider is selected: " + provider);
 
+        Log.d(TAG,"Location provider is selected: " + provider);
         Log.d(TAG,"BackgroundService onCreate ended");
     }
 
@@ -76,6 +92,18 @@ public class BackgroundService extends Service implements LocationListener {
         Log.d(TAG,"BackgroundService onStartCommand started");
         int settingsGpsRefreshTime = intent.getIntExtra("settingsGpsRefreshTime", 1);
         loggedUserUid = intent.getStringExtra("loggedUserUid");
+
+        database.getReference("scoreTable").child(loggedUserUid).child("points").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                myPoints = dataSnapshot.getValue(Integer.class);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
 
         locationManager.requestLocationUpdates(provider, settingsGpsRefreshTime *1000, 0, this); //Actual time to get a new location is a little big higher- 3s instead of 1, 6s instead 5, 12s instead 10
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -133,7 +161,29 @@ public class BackgroundService extends Service implements LocationListener {
             for (String key: landmarksMarker.keySet()) {
                 Marker marker = landmarksMarker.get(key);
                 Float distanceFromMarker = distanceBetween((float)myNewLat,(float)myNewLon,(float)marker.getPosition().latitude, (float)marker.getPosition().longitude);
-                if(distanceFromMarker < NOTIFY_DISTANCE){
+
+                if (distanceFromMarker < VISIT_DISTANCE )
+                {
+                    dbAdapter.open();
+                    if (dbAdapter.checkLandmark(key))
+                        Log.d("SQLite", "Pronadjeno: " + key);
+                    else {
+                        Log.d("SQLite", "Nije pronadjeno, treba dodati: " + key);
+                        dbAdapter.insertVisitedLandmark(key);
+                        for (Landmark landmark : mapMarkersLandmarks.keySet()) {
+                            if (mapMarkersLandmarks.get(landmark) == marker) {
+                                if (landmark.uid.equalsIgnoreCase("admin"))
+                                    myPoints += 10;
+                                else if (!landmark.uid.equalsIgnoreCase(loggedUserUid))
+                                    myPoints += 5;
+                                database.getReference("scoreTable").child(loggedUserUid).child("points").setValue(myPoints);
+                                break;
+                            }
+                        }
+                    }
+                    dbAdapter.close();
+                } // TODO dodaj mozda da ga ne smara za one koje je vec posetio
+                else if(distanceFromMarker < NOTIFY_DISTANCE){
                     showNotification(2,marker.getTitle() + " is " + Math.round(distanceFromMarker) + " meters away from you!");
                 }else{
                     deleteNotification(this,2);
@@ -147,6 +197,7 @@ public class BackgroundService extends Service implements LocationListener {
     //Some things we only have to set the first time.
     private boolean firstNotification = true;
     NotificationCompat.Builder mBuilder = null;
+
     private void showNotification(int uid,String text) {
         vibrationAndSoundNotification();
 

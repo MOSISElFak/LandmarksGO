@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.StrictMode;
@@ -44,6 +45,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -81,7 +84,7 @@ public class MainActivity extends AppCompatActivity
     private SearchView search;
 
     private GoogleMap mMap;
-    private HashMap<Landmark, Marker> mapMarkersLandmarks = new HashMap<Landmark, Marker>();
+    public static HashMap<Landmark, Marker> mapMarkersLandmarks = new HashMap<Landmark, Marker>();
     private HashMap<String, Marker> mapUseridMarker = new HashMap<String, Marker>();
     private HashMap<Marker, User> mapMarkerUser = new HashMap<Marker, User>();
 
@@ -89,16 +92,17 @@ public class MainActivity extends AppCompatActivity
     static File localFileProfileImage = null;
 
     private Location myLocation = null;
+    private Circle distanceCircle;
 
-    public static final int MARKER_LANDMARK = 1;
-    public static final int MARKER_USER = 2;
+    //public static final int MARKER_LANDMARK = 1;
+    //public static final int MARKER_USER = 2;
 
-    private static Bitmap profilePhotoBitmap=null;
+    //private static Bitmap profilePhotoBitmap=null;
     private static View headerView;
     private static ImageView profilePicture;
 
     private static boolean settingsShowPlayers;
-    private static boolean settingsShowPlayersPrevious;
+    //private static boolean settingsShowPlayersPrevious;
     private static boolean settingsBackgroundService;
     private static int settingsGpsRefreshTime;
 
@@ -284,7 +288,8 @@ public class MainActivity extends AppCompatActivity
     protected void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy");
-        stopService(backgroundService);
+        if (backgroundService != null)
+            stopService(backgroundService);
     }
 
     @Override
@@ -320,7 +325,7 @@ public class MainActivity extends AppCompatActivity
         return super.onOptionsItemSelected(item);
     }
 
-    private void getFriends() {
+    /*private void getFriends() {
         FirebaseDatabase database = FirebaseDatabase.getInstance();
         DatabaseReference dbRef = database.getReference("friends/" + loggedUser.getUid());
         dbRef.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -341,7 +346,7 @@ public class MainActivity extends AppCompatActivity
                 Log.e(TAG, "onCancelled", databaseError.toException());
             }
         });
-    }
+    }*/
 
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
@@ -512,6 +517,8 @@ public class MainActivity extends AppCompatActivity
                 for (Landmark landmark: mapMarkersLandmarks.keySet()) {
                     mapMarkersLandmarks.get(landmark).setVisible(true);
                 }
+                if (distanceCircle != null)
+                    distanceCircle.remove();
                 return false;
             }
         });
@@ -522,10 +529,12 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "MainActivity: searchMarker: spinnerSelectedSearchOption=" + spinnerSelectedSearchOption);
         Marker mMarker = null;
 
+        if (distanceCircle != null)
+            distanceCircle.remove();
+
         switch (spinnerSelectedSearchOption)
         {
             case 0: // searching by name
-                //mMarker = mapMarkersLandmarks.get(query);
                 for (Landmark landmark: mapMarkersLandmarks.keySet()) {
                     mMarker = mapMarkersLandmarks.get(landmark);
                     mMarker.setVisible(landmark.title.toLowerCase().startsWith(query.toLowerCase()));
@@ -541,6 +550,13 @@ public class MainActivity extends AppCompatActivity
                 }catch (Exception e){
                     break;
                 }
+
+                // Drawing circle
+                distanceCircle = mMap.addCircle(new CircleOptions()
+                        .center(new LatLng(lat, lon))
+                        .radius(q_distance)
+                        .strokeWidth(3)
+                        .fillColor(Color.CYAN));
 
                 for (Landmark landmark: mapMarkersLandmarks.keySet()) {
                     mMarker = mapMarkersLandmarks.get(landmark);
@@ -558,7 +574,7 @@ public class MainActivity extends AppCompatActivity
         /*if(mMarker!=null){
             mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(mMarker.getPosition().latitude, mMarker.getPosition().longitude)));
             mMarker.showInfoWindow();
-            //TODO: Add smooth animation
+            //TODO: Add smooth animation if only one marker found
 
             //Force hide the onscreen keyboard
             //InputMethodManager imm = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
@@ -569,7 +585,7 @@ public class MainActivity extends AppCompatActivity
     //for Spinner above map
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-        String arr[] = getResources().getStringArray(R.array.search_type);
+        //String arr[] = getResources().getStringArray(R.array.search_type);
         //Toast.makeText(this, "Searching: " + arr[position], Toast.LENGTH_SHORT).show();
         spinnerSelectedSearchOption = position;
         search.setQuery("",false);
@@ -655,7 +671,7 @@ public class MainActivity extends AppCompatActivity
                 //Log.d(TAG, "onChildAdded:" + dataSnapshot.getKey());
                 Landmark landmark = dataSnapshot.getValue(Landmark.class);
                 Log.d(TAG, "onChildAdded:" + landmark.title);
-                Marker marker = addMarkers(landmark.lat, landmark.lon, landmark.title, landmark.desc, null, false, "");
+                Marker marker = addMarkers(landmark.lat, landmark.lon, landmark.title, landmark.desc, null, false, "", dataSnapshot.getKey());
 
                 //Add to searchable HashMap
                 mapMarkersLandmarks.put(landmark, marker);
@@ -689,7 +705,7 @@ public class MainActivity extends AppCompatActivity
 
     private void loadAllPlayersFromServer() {
         Log.d(TAG,"loadAllPlayersFromServer started");
-        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        final FirebaseDatabase database = FirebaseDatabase.getInstance();
         DatabaseReference myRef = database.getReference("users");
 
         //https://firebase.google.com/docs/database/android/lists-of-data
@@ -701,7 +717,7 @@ public class MainActivity extends AppCompatActivity
                     final User user = dataSnapshot.getValue(User.class);
                     //Log.d(TAG, "onChildAdded:" + user.firstName + " uid:" + user.uid);
 
-                    Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, "", null, false, user.uid);
+                    Marker marker = addMarkers(user.lat, user.lon, user.firstName + " " + user.lastName, "", null, false, user.uid, "");
                     mapUseridMarker.put(user.uid, marker);
                     mapMarkerUser.put(marker, user);
                 }
@@ -744,7 +760,7 @@ public class MainActivity extends AppCompatActivity
         myRef.addChildEventListener(childEventListener);
     }
 
-    private Marker addMarkers(double lat, double lng, String title, String snippet, Bitmap icon, boolean moveCamera, String uid){
+    private Marker addMarkers(double lat, double lng, String title, String snippet, Bitmap icon, boolean moveCamera, String uid, String landmarkID){
         Log.d(TAG,"addMarkers uid:" + uid);
         Marker marker = null;
 
@@ -771,6 +787,7 @@ public class MainActivity extends AppCompatActivity
         }
 
         marker = mMap.addMarker(mo);
+
         if(friendList.contains(uid)){
             if(friendsMarker.containsKey(uid)){
                 friendsMarker.remove(uid);
@@ -779,10 +796,10 @@ public class MainActivity extends AppCompatActivity
         }
 
         if(uid==null || uid==""){
-            if(landmarksMarker.containsKey(marker.getId())){
-                landmarksMarker.remove(marker.getId());
+            if(landmarksMarker.containsKey(landmarkID)){
+                landmarksMarker.remove(landmarkID);
             }
-            landmarksMarker.put(marker.getId(), marker);
+            landmarksMarker.put(landmarkID, marker);
         }
 
         if(moveCamera){
